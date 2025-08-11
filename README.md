@@ -2,7 +2,7 @@
 # VyaparSathi Backend
 
 ## Overview
-This is the backend for VyaparSathi POS - an offline-first shop management application targeting Indian village and city level cloth shops.
+This is the backend for VyaparSathi POS - an offline-first shop management application targeting Indian village and city level shops.
 
 ## Technologies
 - Java 17
