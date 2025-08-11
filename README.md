@@ -1,8 +1,8 @@
 
-# DesiBazaar Backend
+# VyaparSathi Backend
 
 ## Overview
-This is the backend for DesiBazaar POS - an offline-first shop management application targeting Indian village and city level cloth shops.
+This is the backend for VyaparSathi POS - an offline-first shop management application targeting Indian village and city level cloth shops.
 
 ## Technologies
 - Java 17
@@ -38,5 +38,5 @@ http://localhost:8080/swagger-ui.html
 
 ## Notes
 - Database file: `./data/shop_data.db`
-- Logs: `logs/desibazaar.log`
+- Logs: `logs/vyaparsathi.log`
 - JWT secret and expiration are configured in `application.properties`
