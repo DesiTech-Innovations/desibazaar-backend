@@ -1,7 +1,9 @@
 package com.desitech.vyaparsathi.sales.entity;
 
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import com.desitech.vyaparsathi.customer.entity.Customer;
 import com.desitech.vyaparsathi.shop.entity.Shop;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -43,9 +45,11 @@ public class Sale {
     private boolean syncedFlag;
 
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<SaleItem> saleItems = new ArrayList<>();
 
     @PrePersist
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     public void onCreate() {
         if (this.date == null) {
             this.date = LocalDateTime.now();

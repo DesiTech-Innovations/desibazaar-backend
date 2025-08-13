@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.customer.entity;
 
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -35,19 +36,23 @@ public class Customer {
     @Column(name = "credit_balance", nullable = false)
     private BigDecimal creditBalance = BigDecimal.ZERO;
 
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     public void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
     }
 
     @PreUpdate
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }

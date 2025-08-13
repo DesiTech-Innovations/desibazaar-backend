@@ -1,6 +1,7 @@
 package com.desitech.vyaparsathi.inventory.entity;
 
 import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -17,13 +18,14 @@ public class StockEntry {
 
     // Change from Long itemId to a ManyToOne relationship with ItemVariant
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id", nullable = false)
+    @JoinColumn(name = "item_variant_id", nullable = false)
     private ItemVariant itemVariant;
 
     private BigDecimal quantity;
 
     private String batch;
 
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated = LocalDateTime.now();
 }

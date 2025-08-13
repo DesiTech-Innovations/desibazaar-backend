@@ -33,6 +33,12 @@ public class CatalogController {
         return ResponseEntity.ok(service.createItem(itemDto));
     }
 
+    @PostMapping("/bulk")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<List<ItemDto>> createItems(@Valid @RequestBody List<ItemDto> items) {
+        return ResponseEntity.ok(service.createItems(items));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     public ResponseEntity<ItemDto> updateItem(@PathVariable Long id, @Valid @RequestBody ItemDto itemDto) {

@@ -1,21 +1,3 @@
--- Drop tables in the correct order to avoid foreign key constraint issues
-DROP TABLE IF EXISTS purchase_order_item;
-DROP TABLE IF EXISTS stock_entry;
-DROP TABLE IF EXISTS sale_item;
-DROP TABLE IF EXISTS customer_ledger;
-DROP TABLE IF EXISTS expense;
-DROP TABLE IF EXISTS purchase_order;
-DROP TABLE IF EXISTS supplier;
-DROP TABLE IF EXISTS sale;
-DROP TABLE IF EXISTS item_variant;
-DROP TABLE IF EXISTS item;
-DROP TABLE IF EXISTS customer;
-DROP TABLE IF EXISTS change_log;
-DROP TABLE IF EXISTS reset_tokens;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS shop;
-
--- Table for 'users' entity
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
@@ -24,7 +6,6 @@ CREATE TABLE users (
     active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- Table for 'reset_tokens' entity
 CREATE TABLE reset_tokens (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     token VARCHAR(255) NOT NULL UNIQUE,
@@ -32,7 +13,6 @@ CREATE TABLE reset_tokens (
     expiry DATETIME NOT NULL
 );
 
--- Table for 'shop' entity
 CREATE TABLE shop (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
@@ -45,7 +25,6 @@ CREATE TABLE shop (
     created_at DATETIME NOT NULL
 );
 
--- Table for 'item' entity
 CREATE TABLE item (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL UNIQUE,
@@ -53,14 +32,13 @@ CREATE TABLE item (
     created_at DATETIME
 );
 
--- Table for 'item_variant' entity
 CREATE TABLE item_variant (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     sku VARCHAR(255) NOT NULL UNIQUE,
     unit VARCHAR(255) NOT NULL,
     price_per_unit DECIMAL(19, 2) NOT NULL,
     hsn VARCHAR(255),
-    gst_rate INTEGER NOT NULL,
+    gst_rate INT NOT NULL,
     photo_path VARCHAR(255),
     item_id BIGINT NOT NULL,
     color VARCHAR(255),
@@ -69,7 +47,6 @@ CREATE TABLE item_variant (
     FOREIGN KEY (item_id) REFERENCES item(id)
 );
 
--- Table for 'change_log' entity
 CREATE TABLE change_log (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     entity_type VARCHAR(255) NOT NULL,
@@ -77,11 +54,10 @@ CREATE TABLE change_log (
     operation VARCHAR(255) NOT NULL,
     payload_json TEXT,
     device_id VARCHAR(255) NOT NULL,
-    seq_no BIGINT NOT NULL,
+    seq_no INT NOT NULL,
     created_at DATETIME NOT NULL
 );
 
--- Table for 'customer' entity
 CREATE TABLE customer (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
@@ -96,12 +72,11 @@ CREATE TABLE customer (
     gst_number VARCHAR(255),
     pan_number VARCHAR(255),
     notes VARCHAR(255),
-    credit_balance DECIMAL(19, 2) NOT NULL,
+    credit_balance DECIMAL(19, 2) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 );
 
--- Table for 'customer_ledger' entity
 CREATE TABLE customer_ledger (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     customer_id BIGINT NOT NULL,
@@ -112,7 +87,6 @@ CREATE TABLE customer_ledger (
     FOREIGN KEY (customer_id) REFERENCES customer(id)
 );
 
--- Table for 'supplier' entity
 CREATE TABLE supplier (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
@@ -123,7 +97,6 @@ CREATE TABLE supplier (
     gstin VARCHAR(255)
 );
 
--- Table for 'purchase_order' entity
 CREATE TABLE purchase_order (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     po_number VARCHAR(255) NOT NULL UNIQUE,
@@ -135,18 +108,16 @@ CREATE TABLE purchase_order (
     FOREIGN KEY (supplier_id) REFERENCES supplier(id)
 );
 
--- Table for 'purchase_order_item' entity
 CREATE TABLE purchase_order_item (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     purchase_order_id BIGINT NOT NULL,
     item_variant_id BIGINT NOT NULL,
-    quantity INTEGER NOT NULL,
+    quantity DECIMAL(19, 2) NOT NULL,
     unit_cost DECIMAL(19, 2) NOT NULL,
     FOREIGN KEY (purchase_order_id) REFERENCES purchase_order(id),
     FOREIGN KEY (item_variant_id) REFERENCES item_variant(id)
 );
 
--- Table for 'stock_entry' entity
 CREATE TABLE stock_entry (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     item_variant_id BIGINT NOT NULL,
@@ -156,7 +127,6 @@ CREATE TABLE stock_entry (
     FOREIGN KEY (item_variant_id) REFERENCES item_variant(id)
 );
 
--- Table for 'expense' entity
 CREATE TABLE expense (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     shop_id BIGINT NOT NULL,
@@ -168,7 +138,6 @@ CREATE TABLE expense (
     FOREIGN KEY (shop_id) REFERENCES shop(id)
 );
 
--- Table for 'sale' entity
 CREATE TABLE sale (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     invoice_no VARCHAR(255) NOT NULL UNIQUE,
@@ -183,7 +152,6 @@ CREATE TABLE sale (
     FOREIGN KEY (customer_id) REFERENCES customer(id)
 );
 
--- Table for 'sale_item' entity
 CREATE TABLE sale_item (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     sale_id BIGINT NOT NULL,
@@ -191,7 +159,7 @@ CREATE TABLE sale_item (
     qty DECIMAL(19, 2) NOT NULL,
     unit_price DECIMAL(19, 2) NOT NULL,
     taxable_value DECIMAL(19, 2) NOT NULL,
-    gst_rate INTEGER NOT NULL,
+    gst_rate INT NOT NULL,
     cgst_amt DECIMAL(19, 2) NOT NULL,
     sgst_amt DECIMAL(19, 2) NOT NULL,
     igst_amt DECIMAL(19, 2) NOT NULL,

@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.auth.entity;
 
+import com.desitech.vyaparsathi.auth.model.Role;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,8 +20,8 @@ public class User {
     @Column(nullable = false)
     private String pinHash;
 
-    @Column(nullable = false)
-    private String role;
+    @Enumerated(EnumType.STRING)
+    private Role role;
 
     @Column(nullable = false)
     private boolean active = true;

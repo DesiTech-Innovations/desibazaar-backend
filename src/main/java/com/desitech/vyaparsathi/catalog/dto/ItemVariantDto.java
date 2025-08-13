@@ -12,7 +12,7 @@ public class ItemVariantDto {
     private String hsn;
     private Integer gstRate;
     private String photoPath;
-    private Long productId; // To link to the parent product
+    private Long productId;
     private String color;
     private String size;
     private String design;

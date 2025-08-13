@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.shop.entity;
 
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,7 @@ public class Shop {
 
     private String locale;
 
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

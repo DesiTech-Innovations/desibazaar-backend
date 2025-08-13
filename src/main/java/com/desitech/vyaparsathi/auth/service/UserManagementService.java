@@ -2,6 +2,7 @@ package com.desitech.vyaparsathi.auth.service;
 
 import com.desitech.vyaparsathi.auth.dto.UserDto;
 import com.desitech.vyaparsathi.auth.entity.User;
+import com.desitech.vyaparsathi.auth.model.Role;
 import com.desitech.vyaparsathi.auth.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,10 +33,10 @@ public class UserManagementService {
     }
 
     @Transactional
-    public void changeUserRole(Long userId, String role) {
+    public void changeUserRole(Long userId, Role role) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
-        user.setRole(role);
+        user.setRole(role); // no toString() needed
         userRepository.save(user);
     }
 
@@ -43,7 +44,7 @@ public class UserManagementService {
         UserDto dto = new UserDto();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
-        dto.setRole(user.getRole());
+        dto.setRole(user.getRole().name()); // return string in DTO if needed
         dto.setActive(user.isActive());
         return dto;
     }

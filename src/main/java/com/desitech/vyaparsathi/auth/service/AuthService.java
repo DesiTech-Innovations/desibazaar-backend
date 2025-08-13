@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.auth.service;
 
+import com.desitech.vyaparsathi.auth.dto.RegisterRequest;
 import com.desitech.vyaparsathi.auth.entity.User;
 import com.desitech.vyaparsathi.auth.repository.UserRepository;
 import com.desitech.vyaparsathi.auth.security.JwtUtil;
@@ -37,17 +38,17 @@ public class AuthService {
             throw new BadCredentialsException("Invalid username or PIN");
         }
 
-        return jwtUtil.generateToken(user.getUsername(), user.getRole());
+        return jwtUtil.generateToken(user.getUsername(), user.getRole().name());
     }
 
-    public void registerNewUser(String username, String pin) {
-        if (userRepository.findByUsername(username).isPresent()) {
+    public void registerNewUser(RegisterRequest request) {
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new IllegalArgumentException("Username already exists");
         }
         User user = new User();
-        user.setUsername(username);
-        user.setPinHash(passwordEncoder.encode(pin));
-        user.setRole("OWNER");
+        user.setUsername(request.getUsername());
+        user.setPinHash(passwordEncoder.encode(request.getPin()));
+        user.setRole(request.getRole());
         user.setActive(true);
         userRepository.save(user);
     }

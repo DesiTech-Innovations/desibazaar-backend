@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.catalog.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -34,6 +35,7 @@ public class ItemVariant {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_id", nullable = false)
+    @JsonBackReference
     private Item item;
 
     @Column

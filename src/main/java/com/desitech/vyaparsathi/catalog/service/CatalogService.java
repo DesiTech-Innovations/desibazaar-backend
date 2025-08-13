@@ -49,6 +49,22 @@ public class CatalogService {
         return mapper.toDto(item);
     }
 
+    public List<ItemDto> createItems(List<ItemDto> items) {
+        // Map DTOs to entities
+        List<Item> entities = items.stream()
+                .map(mapper::toEntity)
+                .collect(Collectors.toList());
+
+        // Save all at once
+        List<Item> savedEntities = itemRepository.saveAll(entities);
+
+        // Map back to DTOs
+        return savedEntities.stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+
     @Transactional
     public ItemDto updateItem(Long id, ItemDto itemDto) {
         Item existingItem = itemRepository.findById(id)

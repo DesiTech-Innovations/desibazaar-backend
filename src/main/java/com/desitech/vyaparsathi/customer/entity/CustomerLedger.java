@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.customer.entity;
 
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -30,6 +31,7 @@ public class CustomerLedger {
     private LocalDateTime createdAt;
 
     @PrePersist
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     public void onCreate() {
         createdAt = LocalDateTime.now();
     }

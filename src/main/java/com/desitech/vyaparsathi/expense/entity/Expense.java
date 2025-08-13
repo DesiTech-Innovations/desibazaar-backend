@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.expense.entity;
 
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,7 @@ public class Expense {
     private boolean deleted = false;
 
     @PrePersist
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     public void onCreate() {
         if (this.date == null) {
             this.date = LocalDateTime.now();

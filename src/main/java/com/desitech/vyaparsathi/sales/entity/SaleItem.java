@@ -1,6 +1,7 @@
 package com.desitech.vyaparsathi.sales.entity;
 
 import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,7 @@ public class SaleItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sale_id", nullable = false)
+    @JsonBackReference
     private Sale sale;
 
     @ManyToOne(fetch = FetchType.EAGER)

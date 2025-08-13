@@ -1,11 +1,15 @@
 package com.desitech.vyaparsathi.auth.security;
 
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.logging.Logger;
+import java.util.Base64;
 
 @Component
 public class JwtUtil {
@@ -17,19 +21,31 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long jwtExpirationMs;
 
+    private SecretKey secretKey;
+
+    // Initialize the SecretKey after secret is injected
+    @PostConstruct
+    public void init() {
+        // Decode Base64 encoded secret if stored as base64
+        byte[] keyBytes = Base64.getDecoder().decode(secret);
+        logger.info("JWT secret key length (bytes): " + keyBytes.length);
+        this.secretKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
     public String generateToken(String username, String role) {
         return Jwts.builder()
                 .setSubject(username)
                 .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(SignatureAlgorithm.HS512, secret)
+                .signWith(secretKey, SignatureAlgorithm.HS512)
                 .compact();
     }
 
     public String extractUsername(String token) {
-        return Jwts.parser()
-                .setSigningKey(secret)
+        return Jwts.parserBuilder()
+                .setSigningKey(secretKey)
+                .build()
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
@@ -37,7 +53,7 @@ public class JwtUtil {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
+            Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token);
             return true;
         } catch (SignatureException e) {
             logger.warning("Invalid JWT signature: " + e.getMessage());

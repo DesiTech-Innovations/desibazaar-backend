@@ -1,5 +1,7 @@
 package com.desitech.vyaparsathi.catalog.entity;
 
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -21,11 +23,13 @@ public class Item {
     @Column
     private String description;
 
+    @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     // A Item can have many variants (e.g., T-Shirt can be size M, L)
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<ItemVariant> variants;
 
 }
