@@ -16,4 +16,6 @@ public interface StockEntryRepository extends JpaRepository<StockEntry, Long> {
     // Update query to sum quantity by itemVariantId
     @Query("SELECT SUM(se.quantity) FROM StockEntry se WHERE se.itemVariant.id = :itemVariantId")
     BigDecimal getTotalQuantityByItemVariantId(@Param("itemVariantId") Long itemVariantId);
+
+    List<StockEntry> findByItemVariantIdOrderByLastUpdatedDesc(Long itemVariantId);
 }

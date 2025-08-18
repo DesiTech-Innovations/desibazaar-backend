@@ -1,5 +1,7 @@
 package com.desitech.vyaparsathi.customer.dto;
 
+import com.desitech.vyaparsathi.common.util.CustomLocalDateTimeDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -20,6 +22,8 @@ public class CustomerDto {
     private String panNumber;
     private String notes;
     private BigDecimal creditBalance;
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     private LocalDateTime createdAt;
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     private LocalDateTime updatedAt;
 }

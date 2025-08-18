@@ -6,6 +6,7 @@ import com.desitech.vyaparsathi.catalog.entity.Item;
 import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.stream.Collectors;
 
 /**
@@ -100,6 +101,10 @@ public class CatalogMapper {
         dto.setColor(itemVariant.getColor());
         dto.setSize(itemVariant.getSize());
         dto.setDesign(itemVariant.getDesign());
+        dto.setCategory(itemVariant.getItem().getCategory());
+        dto.setCurrentStock(BigDecimal.ZERO);
+        dto.setItemName(itemVariant.getItem().getName());
+        dto.setItemId(itemVariant.getItem().getId());
 
         return dto;
     }

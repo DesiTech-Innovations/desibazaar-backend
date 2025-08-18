@@ -13,4 +13,6 @@ public class SalesSummaryDto {
     private BigDecimal totalTaxableValue;
     private BigDecimal totalGstAmount;
     private BigDecimal totalRoundOff;
+    private BigDecimal totalPaid;
+    private BigDecimal netRevenue;
 }

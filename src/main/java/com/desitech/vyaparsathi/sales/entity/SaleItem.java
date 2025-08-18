@@ -1,6 +1,7 @@
 package com.desitech.vyaparsathi.sales.entity;
 
 import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
+import com.desitech.vyaparsathi.sales.GSTType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -33,8 +34,9 @@ public class SaleItem {
     @Column(nullable = false)
     private BigDecimal taxableValue;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private int gstRate;
+    private GSTType gstType;
 
     @Column(nullable = false)
     private BigDecimal cgstAmt;

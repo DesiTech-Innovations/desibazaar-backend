@@ -1,6 +1,7 @@
 package com.desitech.vyaparsathi.catalog.controller;
 
 import com.desitech.vyaparsathi.catalog.dto.ItemVariantDto;
+import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
 import com.desitech.vyaparsathi.catalog.service.ItemVariantService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -36,5 +37,18 @@ public class ItemVariantController {
     @GetMapping("/{id}")
     public ResponseEntity<ItemVariantDto> get(@PathVariable Long id) {
         return ResponseEntity.ok(service.get(id));
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<List<ItemVariantDto>> searchItemVariants(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String color,
+            @RequestParam(required = false) String size,
+            @RequestParam(required = false) String style,
+            @RequestParam(required = false) String sku
+    ) {
+        List<ItemVariantDto>  dtos = service.searchItemVariants(name,category,color,size,style,sku);
+        return ResponseEntity.ok(dtos);
     }
 }

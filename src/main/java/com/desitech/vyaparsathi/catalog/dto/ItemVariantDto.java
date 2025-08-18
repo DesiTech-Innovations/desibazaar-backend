@@ -12,8 +12,11 @@ public class ItemVariantDto {
     private String hsn;
     private Integer gstRate;
     private String photoPath;
-    private Long productId;
+    private Long itemId;
     private String color;
     private String size;
     private String design;
+    private BigDecimal currentStock;
+    private String category;
+    private String itemName;
 }

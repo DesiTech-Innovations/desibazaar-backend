@@ -5,12 +5,14 @@ import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
 import com.desitech.vyaparsathi.catalog.mapper.CatalogMapper;
 import com.desitech.vyaparsathi.catalog.repository.ItemVariantRepository;
 import com.desitech.vyaparsathi.catalog.repository.ItemRepository;
+import com.desitech.vyaparsathi.inventory.service.StockService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,10 +26,13 @@ public class ItemVariantService {
     @Autowired
     private CatalogMapper mapper;
 
+    @Autowired
+    private StockService stockService;
+
     @Transactional
     public ItemVariantDto create(ItemVariantDto dto) {
         // Ensure the parent product exists
-        productRepository.findById(dto.getProductId())
+        productRepository.findById(dto.getItemId())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
         ItemVariant itemVariant = mapper.toEntity(dto);
@@ -59,5 +64,25 @@ public class ItemVariantService {
         return itemVariantRepository.findById(id)
                 .map(mapper::toDto)
                 .orElseThrow(() -> new RuntimeException("Item Variant not found"));
+    }
+
+    public List<ItemVariantDto> searchItemVariants(String name, String category, String color, String size,String style,String sku){
+        List<ItemVariant> variants = itemVariantRepository.searchVariants(name, category, color, size, style,sku);
+        List<ItemVariantDto> itemVariantDtos = new ArrayList<>();
+        for(ItemVariant itemVariant : variants){
+            ItemVariantDto dto = mapper.toDto(itemVariant);
+            dto.setItemName(itemVariant.getItem().getName());
+            dto.setCategory(itemVariant.getItem().getCategory());
+            dto.setCurrentStock(stockService.getCurrentStock(itemVariant.getId()));
+            itemVariantDtos.add(dto);
+        }
+        /*return variants.stream().map(variant -> {
+            ItemVariantDto dto = mapper.toDto(variant);
+            dto.setItemName(variant.getItem().getName());
+            dto.setCategory(variant.getItem().getCategory());
+            dto.setCurrentStock(stockService.getCurrentStock(variant.getId()));
+            return dto;
+        }).collect(Collectors.toList());*/
+        return itemVariantDtos;
     }
 }

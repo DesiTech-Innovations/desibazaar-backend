@@ -1,9 +1,13 @@
 package com.desitech.vyaparsathi.sales.controller;
 
 import com.desitech.vyaparsathi.sales.dto.SaleDto;
+import com.desitech.vyaparsathi.sales.dto.SaleDueDto;
 import com.desitech.vyaparsathi.sales.service.SaleService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +45,25 @@ public class SaleController {
             @RequestParam(required = false) LocalDateTime startDate,
             @RequestParam(required = false) LocalDateTime endDate) {
         return ResponseEntity.ok(service.listSales(startDate, endDate));
+    }
+
+    @GetMapping("/with-due")
+    public ResponseEntity<List<SaleDueDto>> getSalesWithDue() {
+        return ResponseEntity.ok(service.getSalesWithDue());
+    }
+
+    @GetMapping("/{id}/due")
+    public ResponseEntity<SaleDueDto> getSaleDueBySaleId(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getSaleDueBySaleId(id));
+    }
+    @GetMapping("/{customerId}/dues")
+    public ResponseEntity<Page<SaleDueDto>> getCustomerDues(
+            @PathVariable Long customerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<SaleDueDto> dues = service.getDuesByCustomerId(customerId, pageable);
+        return ResponseEntity.ok(dues);
     }
 
 }

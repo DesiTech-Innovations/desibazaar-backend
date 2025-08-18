@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,14 +59,29 @@ public class StockService {
 
     public List<CurrentStockDto> getCurrentStock() {
         List<ItemVariant> itemVariants = itemVariantRepository.findAll();
+
         return itemVariants.stream().map(variant -> {
-            BigDecimal total = stockEntryRepository.getTotalQuantityByItemVariantId(variant.getId());
-            if (total == null) {
-                total = BigDecimal.ZERO;
-            }
+            BigDecimal totalQty = stockEntryRepository.getTotalQuantityByItemVariantId(variant.getId());
+            if (totalQty == null) totalQty = BigDecimal.ZERO;
+
             CurrentStockDto dto = new CurrentStockDto();
             dto.setItemVariantId(variant.getId());
-            dto.setTotalQuantity(total);
+            dto.setItemName(variant.getItem().getName());
+            dto.setSku(variant.getSku());
+            dto.setUnit(variant.getUnit());
+            dto.setColor(variant.getColor());
+            dto.setSize(variant.getSize());
+            dto.setDesign(variant.getDesign());
+            dto.setPricePerUnit(variant.getPricePerUnit());
+            dto.setTotalQuantity(totalQty);
+
+            // Optional: If you want batch info, you can fetch the latest batch or multiple batches
+            // For simplicity, we'll skip batch aggregation here
+
+            List<StockEntry> stockEntries = stockEntryRepository.findByItemVariantIdOrderByLastUpdatedDesc(variant.getId());
+            if (!stockEntries.isEmpty()) {
+                dto.setBatch(stockEntries.get(0).getBatch());
+            }
             return dto;
         }).collect(Collectors.toList());
     }
@@ -79,8 +95,12 @@ public class StockService {
 
         List<StockEntry> entries = stockEntryRepository.findByItemVariantId(itemVariantId)
                 .stream()
-                .sorted((e1, e2) -> e1.getLastUpdated().compareTo(e2.getLastUpdated()))
-                .collect(Collectors.toList());
+                .sorted((e1, e2) -> {
+                    LocalDateTime date1 = e1.getLastUpdated() != null ? e1.getLastUpdated() : LocalDateTime.MAX;
+                    LocalDateTime date2 = e2.getLastUpdated() != null ? e2.getLastUpdated() : LocalDateTime.MAX;
+                    return date1.compareTo(date2);
+                })
+                .toList();
 
         BigDecimal remaining = quantityToDeduct;
         for (StockEntry entry : entries) {
@@ -101,5 +121,9 @@ public class StockService {
     public boolean isStockAvailable(Long itemVariantId, BigDecimal quantity) {
         BigDecimal currentTotal = stockEntryRepository.getTotalQuantityByItemVariantId(itemVariantId);
         return currentTotal != null && currentTotal.compareTo(quantity) >= 0;
+    }
+
+    public BigDecimal getCurrentStock(Long itemVariantId) {
+        return stockEntryRepository.getTotalQuantityByItemVariantId(itemVariantId);
     }
 }

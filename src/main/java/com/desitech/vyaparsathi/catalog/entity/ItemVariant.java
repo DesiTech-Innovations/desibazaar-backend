@@ -3,6 +3,7 @@ package com.desitech.vyaparsathi.catalog.entity;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 
@@ -27,7 +28,7 @@ public class ItemVariant {
     @Column
     private String hsn;
 
-    @Column(name = "gst_rate", nullable = false)
+    @Column(name = "gst_rate", nullable = true)
     private Integer gstRate;
 
     @Column(name = "photo_path")
@@ -36,6 +37,7 @@ public class ItemVariant {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_id", nullable = false)
     @JsonBackReference
+    @ToString.Exclude
     private Item item;
 
     @Column

@@ -1,5 +1,9 @@
 package com.desitech.vyaparsathi.expense.dto;
 
+import com.desitech.vyaparsathi.common.util.CustomLocalDateTimeDeserializer;
+import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import jakarta.persistence.Convert;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +22,7 @@ public class ExpenseDto {
     @NotNull(message = "Amount cannot be null")
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
     private BigDecimal amount;
-    private LocalDateTime date = LocalDateTime.now();
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
+    private LocalDateTime date;
     private String notes;
 }

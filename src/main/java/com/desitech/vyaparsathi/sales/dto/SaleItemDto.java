@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.sales.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,9 +10,9 @@ import java.math.BigDecimal;
 
 @Data
 public class SaleItemDto {
-    private Long id;
-    @NotNull(message = "Item ID cannot be null")
     private Long itemId;
+    @JsonProperty("id")
+    @NotNull(message = "Item Variant ID cannot be null")
     private Long itemVariantId;
     @NotBlank(message = "Item name cannot be blank")
     private String itemName;

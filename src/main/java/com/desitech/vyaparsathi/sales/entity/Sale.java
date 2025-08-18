@@ -2,11 +2,15 @@ package com.desitech.vyaparsathi.sales.entity;
 
 import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import com.desitech.vyaparsathi.customer.entity.Customer;
+import com.desitech.vyaparsathi.payment.entity.Payment;
 import com.desitech.vyaparsathi.shop.entity.Shop;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -15,6 +19,8 @@ import java.util.List;
 @Entity
 @Data
 @NoArgsConstructor
+@ToString(exclude = {"payments", "saleItems", "customer", "shop"})
+@EqualsAndHashCode(exclude = {"payments", "saleItems"})
 public class Sale {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,7 +46,9 @@ public class Sale {
 
     private BigDecimal roundOff;
 
-    private String paymentMethod;
+    @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<Payment> payments;
 
     private boolean syncedFlag;
 

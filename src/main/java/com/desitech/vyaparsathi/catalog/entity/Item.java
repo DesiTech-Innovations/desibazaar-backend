@@ -23,6 +23,9 @@ public class Item {
     @Column
     private String description;
 
+    @Column
+    private String category;
+
     @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

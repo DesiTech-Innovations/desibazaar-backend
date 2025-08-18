@@ -8,7 +8,8 @@ import java.time.format.DateTimeFormatter;
 @Converter(autoApply = false)
 public class LocalDateTimeAttributeConverter implements AttributeConverter<LocalDateTime, String> {
 
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    // Corrected formatter to match the database format "yyyy-MM-dd HH:mm:ss"
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public String convertToDatabaseColumn(LocalDateTime localDateTime) {
@@ -26,7 +27,6 @@ public class LocalDateTimeAttributeConverter implements AttributeConverter<Local
         try {
             return LocalDateTime.parse(dbData, formatter);
         } catch (Exception e) {
-            // Log the error and return null or re-throw
             System.err.println("Error parsing date: " + dbData);
             return null;
         }

@@ -10,4 +10,6 @@ public class DailyReportDto {
     private BigDecimal totalSales;
     private int numberOfSales;
     private BigDecimal totalExpenses;
+    private BigDecimal totalPaid;
+    private BigDecimal netRevenue;
 }
