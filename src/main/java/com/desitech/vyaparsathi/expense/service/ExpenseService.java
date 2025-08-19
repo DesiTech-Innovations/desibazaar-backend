@@ -6,6 +6,7 @@ import com.desitech.vyaparsathi.expense.dto.UpdateExpenseDto;
 import com.desitech.vyaparsathi.expense.entity.Expense;
 import com.desitech.vyaparsathi.expense.mapper.ExpenseMapper;
 import com.desitech.vyaparsathi.expense.repository.ExpenseRepository;
+import com.desitech.vyaparsathi.expense.validation.ExpenseTypeValidator;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,9 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseDto create(@Valid ExpenseDto dto) {
+        // Validate that this is not an inventory/stock purchase
+        ExpenseTypeValidator.isValidOperationalExpense(dto.getType());
+        
         Expense expense = mapper.toEntity(dto);
         repository.save(expense);
         changeLogService.append("EXPENSE", expense.getId(), "CREATE", expense, "LOCAL_DEVICE");
@@ -48,6 +52,12 @@ public class ExpenseService {
     public ExpenseDto update(Long id, @Valid UpdateExpenseDto dto) {
         Expense expense = repository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new EntityNotFoundException("Expense with id " + id + " not found or is deleted"));
+        
+        // Validate expense type if it's being changed
+        if (dto.getType() != null) {
+            ExpenseTypeValidator.isValidOperationalExpense(dto.getType());
+        }
+        
         mapper.updateEntityFromDto(dto, expense);
         repository.save(expense);
         changeLogService.append("EXPENSE", expense.getId(), "UPDATE", expense, "LOCAL_DEVICE");
