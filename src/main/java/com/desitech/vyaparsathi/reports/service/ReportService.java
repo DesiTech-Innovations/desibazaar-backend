@@ -37,12 +37,18 @@ public class ReportService {
     private COGSCalculationService cogsCalculationService;
 
     private List<Sale> getSalesByDateRange(LocalDate from, LocalDate to) {
+        if (from == null && to == null) {
+            return saleRepository.findAll();
+        }
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.atTime(23, 59, 59); // End of day
         return saleRepository.findByDateBetween(start, end);
     }
 
     private List<Expense> getExpensesByDateRange(LocalDate from, LocalDate to) {
+        if (from == null && to == null) {
+            return expenseRepository.findAll();
+        }
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.atTime(23, 59, 59); // End of day
         return expenseRepository.findByDateBetweenAndDeletedFalse(start, end);

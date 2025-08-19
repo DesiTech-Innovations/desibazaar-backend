@@ -39,14 +39,25 @@ public class ReportController {
     }
 
     @GetMapping("/sales-summary")
-    @Operation(summary = "Get sales summary for date range", 
-               description = "Returns comprehensive sales summary with COGS calculation and correct profit calculation. Net Profit excludes inventory purchases from expenses.")
+    @Operation(
+            summary = "Get sales summary for date range",
+            description = "Returns comprehensive sales summary with COGS calculation and correct profit calculation. Net Profit excludes inventory purchases from expenses."
+    )
     public ResponseEntity<SalesSummaryDto> getSalesSummary(
             @Parameter(description = "Start date in YYYY-MM-DD format", example = "2024-01-01")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String from,
             @Parameter(description = "End date in YYYY-MM-DD format", example = "2024-01-31")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(service.getSalesSummary(from, to));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String to) {
+
+        LocalDate fromDate = (from == null || from.isBlank() || "undefined".equalsIgnoreCase(from))
+                ? null
+                : LocalDate.parse(from);
+
+        LocalDate toDate = (to == null || to.isBlank() || "undefined".equalsIgnoreCase(to))
+                ? null
+                : LocalDate.parse(to);
+
+        return ResponseEntity.ok(service.getSalesSummary(fromDate, toDate));
     }
 
     @GetMapping("/gst-summary")
