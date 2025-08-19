@@ -81,7 +81,6 @@ public class ReportService {
 
     public SalesSummaryDto getSalesSummary(LocalDate from, LocalDate to) {
         List<Sale> sales = getSalesByDateRange(from, to);
-        List<Expense> expenses = getExpensesByDateRange(date, date);
 
         BigDecimal totalSales = sales.stream()
                 .map(Sale::getTotalAmount)
@@ -94,10 +93,10 @@ public class ReportService {
                 .filter(value -> value != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalExpenses = expenses.stream()
+        /*BigDecimal totalExpenses = expenses.stream()
                 .map(Expense::getAmount)
                 .filter(amount -> amount != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add);*/
 
         BigDecimal totalGstAmount = sales.stream()
                 .flatMap(s -> s.getSaleItems().stream())
@@ -132,7 +131,7 @@ public class ReportService {
         dto.setTotalRoundOff(totalRoundOff);
         dto.setTotalPaid(totalPaid); // New field
         dto.setNetRevenue(totalSales);
-        dto.setNetProfit(totalSales.subtract(totalExpenses));
+       /* dto.setNetProfit(totalSales.subtract(totalExpenses));*/
         dto.setOutstandingReceivable(totalSales.subtract(totalPaid));
         return dto;
     }
