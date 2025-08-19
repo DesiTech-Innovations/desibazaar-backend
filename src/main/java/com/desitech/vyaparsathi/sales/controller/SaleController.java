@@ -2,6 +2,8 @@ package com.desitech.vyaparsathi.sales.controller;
 
 import com.desitech.vyaparsathi.sales.dto.SaleDto;
 import com.desitech.vyaparsathi.sales.dto.SaleDueDto;
+import com.desitech.vyaparsathi.sales.dto.SaleReturnDto;
+import com.desitech.vyaparsathi.sales.dto.SalesProfitDto;
 import com.desitech.vyaparsathi.sales.service.SaleService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +66,26 @@ public class SaleController {
         Pageable pageable = PageRequest.of(page, size);
         Page<SaleDueDto> dues = service.getDuesByCustomerId(customerId, pageable);
         return ResponseEntity.ok(dues);
+    }
+
+    @PostMapping("/{id}/return")
+    public ResponseEntity<Void> processSaleReturn(@PathVariable Long id, @RequestBody SaleReturnDto returnDto) {
+        returnDto.setSaleId(id); // Ensure consistency
+        service.processSaleReturn(returnDto);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<Void> cancelSale(@PathVariable Long id, @RequestParam String reason) {
+        service.cancelSale(id, reason);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/profit-report")
+    public ResponseEntity<List<SalesProfitDto>> getSalesProfitReport(
+            @RequestParam LocalDateTime startDate,
+            @RequestParam LocalDateTime endDate) {
+        return ResponseEntity.ok(service.getSalesProfitReport(startDate, endDate));
     }
 
 }
