@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:3000")
@@ -26,7 +28,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
         String token = authService.authenticateAndGenerateToken(request.getUsername(), request.getPin());
-        return ResponseEntity.ok(new AuthResponse(token));
+        String refreshToken = authService.createRefreshToken(request.getUsername());
+        return ResponseEntity.ok(new AuthResponse(token, refreshToken));
     }
 
     @PostMapping("/register")
@@ -46,5 +49,14 @@ public class AuthController {
     public ResponseEntity<String> resetPin(@Valid @RequestBody ResetPinRequest request) {
         authService.resetUserPin(request.getUsername(), request.getToken(), request.getNewPin());
         return ResponseEntity.ok("PIN reset successful.");
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refreshToken(@RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+        String newAccessToken = authService.refreshAccessToken(refreshToken);
+        // Optionally, issue a new refresh token as well
+        // String newRefreshToken = authService.createRefreshToken(username);
+        return ResponseEntity.ok(new AuthResponse(newAccessToken, refreshToken));
     }
 }

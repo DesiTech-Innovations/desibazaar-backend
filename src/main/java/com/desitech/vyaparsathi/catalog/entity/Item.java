@@ -4,6 +4,7 @@ import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.mapping.Value;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,6 +26,9 @@ public class Item {
 
     @Column
     private String category;
+
+    @Column(name = "brand_name")
+    private String brandName;
 
     @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "created_at")

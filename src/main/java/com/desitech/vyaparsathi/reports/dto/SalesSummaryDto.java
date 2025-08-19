@@ -15,4 +15,6 @@ public class SalesSummaryDto {
     private BigDecimal totalRoundOff;
     private BigDecimal totalPaid;
     private BigDecimal netRevenue;
+    private BigDecimal netProfit;
+    private BigDecimal outstandingReceivable;
 }

@@ -73,12 +73,15 @@ public class ReportService {
         dto.setNumberOfSales(sales.size());
         dto.setTotalExpenses(totalExpenses);
         dto.setTotalPaid(totalPaid); // New field
-        dto.setNetRevenue(totalSales.subtract(totalPaid).subtract(totalExpenses)); // New field
+        dto.setNetRevenue(totalSales);
+        dto.setNetProfit(totalSales.subtract(totalExpenses));
+        dto.setOutstandingReceivable(totalSales.subtract(totalPaid));
         return dto;
     }
 
     public SalesSummaryDto getSalesSummary(LocalDate from, LocalDate to) {
         List<Sale> sales = getSalesByDateRange(from, to);
+        List<Expense> expenses = getExpensesByDateRange(date, date);
 
         BigDecimal totalSales = sales.stream()
                 .map(Sale::getTotalAmount)
@@ -89,6 +92,11 @@ public class ReportService {
                 .flatMap(s -> s.getSaleItems().stream())
                 .map(SaleItem::getTaxableValue)
                 .filter(value -> value != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalExpenses = expenses.stream()
+                .map(Expense::getAmount)
+                .filter(amount -> amount != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalGstAmount = sales.stream()
@@ -123,7 +131,9 @@ public class ReportService {
         dto.setTotalGstAmount(totalGstAmount);
         dto.setTotalRoundOff(totalRoundOff);
         dto.setTotalPaid(totalPaid); // New field
-        dto.setNetRevenue(totalSales.subtract(totalPaid)); // New field, excluding expenses for simplicity
+        dto.setNetRevenue(totalSales);
+        dto.setNetProfit(totalSales.subtract(totalExpenses));
+        dto.setOutstandingReceivable(totalSales.subtract(totalPaid));
         return dto;
     }
 

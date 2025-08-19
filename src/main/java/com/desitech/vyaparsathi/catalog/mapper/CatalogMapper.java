@@ -35,6 +35,8 @@ public class CatalogMapper {
         dto.setId(item.getId());
         dto.setName(item.getName());
         dto.setDescription(item.getDescription());
+        dto.setCategory(item.getCategory());
+        dto.setBrandName(item.getBrandName());
 
         // Map the list of variants if it exists
         if (item.getVariants() != null) {

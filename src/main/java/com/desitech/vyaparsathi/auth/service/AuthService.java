@@ -2,6 +2,7 @@ package com.desitech.vyaparsathi.auth.service;
 
 import com.desitech.vyaparsathi.auth.dto.RegisterRequest;
 import com.desitech.vyaparsathi.auth.entity.User;
+import com.desitech.vyaparsathi.auth.entity.RefreshToken;
 import com.desitech.vyaparsathi.auth.repository.UserRepository;
 import com.desitech.vyaparsathi.auth.security.JwtUtil;
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +27,9 @@ public class AuthService {
     @Autowired
     private ResetTokenService resetTokenService;
 
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+
     public String authenticateAndGenerateToken(String username, String pin) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("Invalid username or PIN"));
@@ -38,7 +42,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid username or PIN");
         }
 
-        return jwtUtil.generateToken(user.getUsername(), user.getRole().name());
+        return jwtUtil.generateAccessToken(user.getUsername(), user.getRole().name());
     }
 
     public void registerNewUser(RegisterRequest request) {
@@ -64,5 +68,19 @@ public class AuthService {
         user.setPinHash(passwordEncoder.encode(newPin));
         userRepository.save(user);
         resetTokenService.deleteToken(token);
+    }
+
+    // Call this on login to issue refresh token
+    public String createRefreshToken(String username) {
+        return refreshTokenService.createRefreshToken(username).getToken();
+    }
+    public String refreshAccessToken(String refreshToken) {
+        RefreshToken token = refreshTokenService.findByToken(refreshToken)
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+        if (refreshTokenService.isExpired(token)) {
+            refreshTokenService.deleteByUsername(token.getUsername());
+            throw new RuntimeException("Refresh token expired");
+        }
+        return jwtUtil.generateRefreshToken(token.getUsername());
     }
 }

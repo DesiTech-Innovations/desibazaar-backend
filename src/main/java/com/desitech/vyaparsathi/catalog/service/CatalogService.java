@@ -30,51 +30,42 @@ public class CatalogService {
     // --- Product (Item) Management ---
 
     public List<ItemDto> getAllItems() {
-        return itemRepository.findAll().stream()
+        return itemRepository.findAllWithVariants().stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
 
     public ItemDto getItemById(Long id) {
-        Item item = itemRepository.findById(id)
+        Item item = itemRepository.findByIdWithVariants(id)
                 .orElseThrow(() -> new EntityNotFoundException("Item not found with id: " + id));
         return mapper.toDto(item);
     }
 
     @Transactional
     public ItemDto createItem(ItemDto itemDto) {
-        // Validation for item name uniqueness could be added here
         Item item = mapper.toEntity(itemDto);
         item = itemRepository.save(item);
         return mapper.toDto(item);
     }
 
     public List<ItemDto> createItems(List<ItemDto> items) {
-        // Map DTOs to entities
         List<Item> entities = items.stream()
                 .map(mapper::toEntity)
                 .collect(Collectors.toList());
-
-        // Save all at once
         List<Item> savedEntities = itemRepository.saveAll(entities);
-
-        // Map back to DTOs
         return savedEntities.stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
 
-
     @Transactional
     public ItemDto updateItem(Long id, ItemDto itemDto) {
-        Item existingItem = itemRepository.findById(id)
+        Item existingItem = itemRepository.findByIdWithVariants(id)
                 .orElseThrow(() -> new EntityNotFoundException("Item not found with id: " + id));
 
-        // Update top-level item properties
         existingItem.setName(itemDto.getName());
         existingItem.setDescription(itemDto.getDescription());
 
-        // Handle variants within the item update
         List<ItemVariant> updatedVariants = itemDto.getVariants().stream()
                 .map(variantDto -> {
                     ItemVariant variant = mapper.toEntity(variantDto);
@@ -124,5 +115,12 @@ public class CatalogService {
         variant.setItem(item);
         itemVariantRepository.save(variant);
         return mapper.toDto(variant);
+    }
+
+    @Transactional
+    public void deleteItemVariant(Long id) {
+        ItemVariant variant = itemVariantRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Item Variant not found with id: " + id));
+        itemVariantRepository.delete(variant);
     }
 }

@@ -12,4 +12,7 @@ public class DailyReportDto {
     private BigDecimal totalExpenses;
     private BigDecimal totalPaid;
     private BigDecimal netRevenue;
+    private BigDecimal netProfit;
+    private BigDecimal outstandingReceivable;
+
 }

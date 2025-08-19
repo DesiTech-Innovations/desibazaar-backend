@@ -21,6 +21,9 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long jwtExpirationMs;
 
+    @Value("${jwt.refreshExpiration}")
+    private long jwtRefreshExpirationMs;
+
     private SecretKey secretKey;
 
     // Initialize the SecretKey after secret is injected
@@ -31,8 +34,7 @@ public class JwtUtil {
         logger.info("JWT secret key length (bytes): " + keyBytes.length);
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
-
-    public String generateToken(String username, String role) {
+    public String generateAccessToken(String username, String role) {
         return Jwts.builder()
                 .setSubject(username)
                 .claim("role", role)
@@ -41,7 +43,15 @@ public class JwtUtil {
                 .signWith(secretKey, SignatureAlgorithm.HS512)
                 .compact();
     }
-
+    // Generate Refresh Token
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + jwtRefreshExpirationMs))
+                .signWith(secretKey, SignatureAlgorithm.HS512)
+                .compact();
+    }
     public String extractUsername(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
