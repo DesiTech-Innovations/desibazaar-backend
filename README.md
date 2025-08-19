@@ -17,7 +17,9 @@ This is the backend for **VyaparSathi**, a powerful, offline-first shop manageme
 
 *   **Customer & Supplier Management**: Manages detailed information for both customers and suppliers.
 
-*   **Financial Tracking**: Records and manages business expenses and customer credit balances through a dedicated ledger.
+*   **Financial Tracking**: Records and manages business expenses and customer credit balances through a dedicated ledger. **NEW**: Enhanced with proper separation between operational expenses and inventory purchases, plus COGS calculation for accurate profit reporting.
+
+*   **Advanced Financial Reports**: Provides comprehensive reports including sales summaries, daily reports, and GST breakdowns. **NEW**: Features corrected net revenue calculation, COGS tracking, and outstanding receivables with clear distinction between inventory costs and operational expenses.
 
 *   **API Documentation**: Provides clear and interactive API documentation with **Swagger UI**.
 
@@ -92,7 +94,9 @@ The project is organized into logical modules, each handling a specific business
 
 *   sales: Handles sales transactions and billing, including invoice generation.
 
-*   expense: Tracks and manages business expenses.
+*   expense: Tracks and manages operational business expenses. **IMPORTANT**: Now includes validation to prevent inventory/stock purchases from being recorded as expenses - use Purchase Orders instead.
+
+*   reports: **NEW**: Enhanced financial reporting with COGS calculation, corrected net profit calculations, and clear distinction between operational expenses and inventory costs.
 
 *   changelog: Provides an audit trail for all data modifications.
 
@@ -109,3 +113,31 @@ The project is organized into logical modules, each handling a specific business
 *   **JWT**: The JWT secret key and expiration time are configured in src/main/resources/application.properties.
 
 *   **Flyway**: Migration scripts are located in src/main/resources/db/migration and are executed automatically on application startup.
+
+### Financial Reporting Improvements
+
+This version includes significant improvements to financial reporting and business logic:
+
+#### Key Changes
+
+*   **Expense Validation**: The system now prevents inventory/stock purchases from being recorded as business expenses. Only operational expenses (rent, utilities, salary, marketing, etc.) can be recorded in the expense module.
+
+*   **COGS Calculation**: Implemented Cost of Goods Sold (COGS) calculation using average cost method based on actual purchase costs from purchase orders.
+
+*   **Corrected Net Profit**: Net profit is now calculated as: `Total Sales - COGS - Operational Expenses` (excludes inventory purchases).
+
+*   **Outstanding Receivables**: Added proper calculation of outstanding receivables as `Total Sales - Total Paid`.
+
+*   **Enhanced Reports**: All financial reports now include COGS, corrected net profit calculations, and clear field descriptions in API documentation.
+
+#### Important Notes
+
+*   **Inventory Purchases**: Must be recorded through Purchase Orders in the inventory module, not as expenses.
+*   **Operational Expenses**: Only true business operational costs should be recorded in the expense module.
+*   **Backward Compatibility**: Existing data remains unaffected; validation applies only to new expense entries.
+
+#### API Changes
+
+*   Expense creation/update endpoints now validate expense types
+*   Report endpoints return additional fields: `totalCOGS`, corrected `netProfit`, and `outstandingReceivable`
+*   Enhanced Swagger documentation explains the distinction between different financial metrics

@@ -32,6 +32,9 @@ public class ReportService {
 
     @Autowired
     private PaymentService paymentService; // For payment data
+    
+    @Autowired
+    private COGSCalculationService cogsCalculationService;
 
     private List<Sale> getSalesByDateRange(LocalDate from, LocalDate to) {
         LocalDateTime start = from.atStartOfDay();
@@ -54,7 +57,8 @@ public class ReportService {
                 .filter(amount -> amount != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalExpenses = expenses.stream()
+        // Only include operational expenses (inventory purchases should not be here)
+        BigDecimal totalOperationalExpenses = expenses.stream()
                 .map(Expense::getAmount)
                 .filter(amount -> amount != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -67,18 +71,32 @@ public class ReportService {
                         .reduce(BigDecimal.ZERO, BigDecimal::add))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Calculate COGS for sold items
+        BigDecimal totalCOGS = cogsCalculationService.calculateCOGS(sales);
+
         DailyReportDto dto = new DailyReportDto();
         dto.setDate(date);
         dto.setTotalSales(totalSales);
         dto.setNumberOfSales(sales.size());
-        dto.setTotalExpenses(totalExpenses);
-        dto.setTotalPaid(totalPaid); // New field
-        dto.setNetRevenue(totalSales.subtract(totalPaid).subtract(totalExpenses)); // New field
+        dto.setTotalExpenses(totalOperationalExpenses);
+        dto.setTotalPaid(totalPaid);
+        dto.setTotalCOGS(totalCOGS);
+        
+        // Net Revenue = Total Sales (no returns/discounts deduction in current system)
+        dto.setNetRevenue(totalSales);
+        
+        // Outstanding Receivables = Total Sales - Total Paid
+        dto.setOutstandingReceivable(totalSales.subtract(totalPaid));
+        
+        // Net Profit = Total Sales - COGS - Operational Expenses
+        dto.setNetProfit(totalSales.subtract(totalCOGS).subtract(totalOperationalExpenses));
+        
         return dto;
     }
 
     public SalesSummaryDto getSalesSummary(LocalDate from, LocalDate to) {
         List<Sale> sales = getSalesByDateRange(from, to);
+        List<Expense> expenses = getExpensesByDateRange(from, to);
 
         BigDecimal totalSales = sales.stream()
                 .map(Sale::getTotalAmount)
@@ -89,6 +107,12 @@ public class ReportService {
                 .flatMap(s -> s.getSaleItems().stream())
                 .map(SaleItem::getTaxableValue)
                 .filter(value -> value != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Only include operational expenses (inventory purchases should not be here due to validation)
+        BigDecimal totalOperationalExpenses = expenses.stream()
+                .map(Expense::getAmount)
+                .filter(amount -> amount != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalGstAmount = sales.stream()
@@ -114,6 +138,9 @@ public class ReportService {
                         .reduce(BigDecimal.ZERO, BigDecimal::add))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Calculate COGS for the period
+        BigDecimal totalCOGS = cogsCalculationService.calculateCOGSForPeriod(sales, from, to);
+
         SalesSummaryDto dto = new SalesSummaryDto();
         dto.setFromDate(from);
         dto.setToDate(to);
@@ -122,8 +149,18 @@ public class ReportService {
         dto.setTotalTaxableValue(totalTaxableValue);
         dto.setTotalGstAmount(totalGstAmount);
         dto.setTotalRoundOff(totalRoundOff);
-        dto.setTotalPaid(totalPaid); // New field
-        dto.setNetRevenue(totalSales.subtract(totalPaid)); // New field, excluding expenses for simplicity
+        dto.setTotalPaid(totalPaid);
+        dto.setTotalCOGS(totalCOGS);
+        
+        // Net Revenue = Total Sales (no returns/discounts in current system)
+        dto.setNetRevenue(totalSales);
+        
+        // Outstanding Receivables = Total Sales - Total Paid
+        dto.setOutstandingReceivable(totalSales.subtract(totalPaid));
+        
+        // Net Profit = Total Sales - COGS - Operational Expenses
+        dto.setNetProfit(totalSales.subtract(totalCOGS).subtract(totalOperationalExpenses));
+        
         return dto;
     }
 
