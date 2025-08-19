@@ -11,6 +11,8 @@ import com.desitech.vyaparsathi.sales.GSTType;
 import com.desitech.vyaparsathi.sales.dto.SaleDto;
 import com.desitech.vyaparsathi.sales.dto.SaleDueDto;
 import com.desitech.vyaparsathi.sales.dto.SaleItemDto;
+import com.desitech.vyaparsathi.sales.dto.SaleReturnDto;
+import com.desitech.vyaparsathi.sales.dto.SalesProfitDto;
 import com.desitech.vyaparsathi.sales.entity.Sale;
 import com.desitech.vyaparsathi.sales.entity.SaleItem;
 import com.desitech.vyaparsathi.sales.mapper.SaleMapper;
@@ -75,6 +77,7 @@ public class SaleService {
         List<SaleItem> saleItems = new ArrayList<>();
         BigDecimal totalTaxableValue = BigDecimal.ZERO;
         BigDecimal totalGSTAmount = BigDecimal.ZERO;
+        BigDecimal totalCOGS = BigDecimal.ZERO; // Track total COGS for this sale
 
         for (SaleItemDto itemDto : dto.getItems()) {
             if (!stockService.isStockAvailable(itemDto.getItemVariantId(), itemDto.getQty())) {
@@ -84,10 +87,16 @@ public class SaleService {
             ItemVariant itemVariant = itemVariantRepository.findById(itemDto.getItemVariantId())
                     .orElseThrow(() -> new RuntimeException("Item Variant not found for ID: " + itemDto.getItemVariantId()));
 
+            // Calculate COGS for this item using FIFO
+            BigDecimal itemCOGS = stockService.calculateCOGSFifo(itemDto.getItemVariantId(), itemDto.getQty());
+            BigDecimal costPerUnit = itemCOGS.divide(itemDto.getQty(), 4, RoundingMode.HALF_UP);
+            totalCOGS = totalCOGS.add(itemCOGS);
+
             SaleItem saleItem = new SaleItem();
             saleItem.setItemVariant(itemVariant);
             saleItem.setQty(itemDto.getQty());
             saleItem.setUnitPrice(itemDto.getUnitPrice());
+            saleItem.setCostPerUnit(costPerUnit); // Set the cost per unit for this sale item
 
             if (Boolean.TRUE.equals(dto.getIsGstRequired()) && itemVariant.getGstRate() != null) {
                 GSTType gstType = GSTType.fromRate(itemVariant.getGstRate());
@@ -126,7 +135,12 @@ public class SaleService {
             }
 
             saleItems.add(saleItem);
-            stockService.deductStock(itemDto.getItemVariantId(), itemDto.getQty());
+        }
+
+        // Deduct stock for all items after successful validation
+        for (SaleItemDto itemDto : dto.getItems()) {
+            stockService.deductStock(itemDto.getItemVariantId(), itemDto.getQty(), 
+                                   "Sale Transaction", "Sale - Processing");
         }
 
         BigDecimal totalAmountBeforeRoundOff;
@@ -148,6 +162,7 @@ public class SaleService {
         sale.setShop(shop);
         sale.setCustomer(customer);
         sale.setTotalAmount(finalTotalAmount);
+        sale.setCogs(totalCOGS); // Set the total COGS for this sale
         sale.setRoundOff(roundOff.negate());
         sale.setSyncedFlag(false);
         sale.setSaleItems(saleItems);
@@ -196,6 +211,152 @@ public class SaleService {
         changeLogService.append("SALE", sale.getId(), "CREATE", sale, "LOCAL_DEVICE");
 
         return invoiceService.generatePdf(sale);
+    }
+
+    /**
+     * Process sale return
+     */
+    @Transactional
+    public void processSaleReturn(SaleReturnDto returnDto) {
+        Sale sale = saleRepository.findById(returnDto.getSaleId())
+                .orElseThrow(() -> new RuntimeException("Sale not found"));
+
+        BigDecimal totalReturnAmount = BigDecimal.ZERO;
+
+        for (SaleReturnDto.SaleReturnItemDto returnItem : returnDto.getReturnItems()) {
+            SaleItem saleItem = sale.getSaleItems().stream()
+                    .filter(si -> si.getId().equals(returnItem.getSaleItemId()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Sale item not found"));
+
+            if (returnItem.getReturnQuantity().compareTo(saleItem.getQty()) > 0) {
+                throw new IllegalArgumentException("Return quantity cannot exceed original quantity");
+            }
+
+            // Calculate return amount (proportional to original)
+            BigDecimal returnRatio = returnItem.getReturnQuantity().divide(saleItem.getQty(), 4, RoundingMode.HALF_UP);
+            BigDecimal itemReturnAmount = saleItem.getUnitPrice().multiply(returnItem.getReturnQuantity());
+            totalReturnAmount = totalReturnAmount.add(itemReturnAmount);
+
+            // Return stock to inventory
+            stockService.addStock(saleItem.getItemVariant().getId(), 
+                                returnItem.getReturnQuantity(), 
+                                saleItem.getCostPerUnit(), 
+                                "Return from Sale #" + sale.getInvoiceNo());
+
+            // Update sale item quantity
+            saleItem.setQty(saleItem.getQty().subtract(returnItem.getReturnQuantity()));
+        }
+
+        // Update sale total amount
+        sale.setTotalAmount(sale.getTotalAmount().subtract(totalReturnAmount));
+        sale.setCogs(sale.getCogs().subtract(calculateReturnCOGS(returnDto)));
+        
+        saleRepository.save(sale);
+
+        // Handle payment refund if requested
+        if (returnDto.isRefundPayment() && sale.getCustomer() != null) {
+            CustomerLedgerDto ledgerDto = new CustomerLedgerDto();
+            ledgerDto.setAmount(totalReturnAmount);
+            ledgerDto.setType(CustomerLedgerType.DEBIT); // Refund reduces customer debt
+            ledgerDto.setDescription("Return for Sale #" + sale.getInvoiceNo() + 
+                                   (returnDto.getReason() != null ? " - " + returnDto.getReason() : ""));
+            ledgerService.addEntry(sale.getCustomer().getId(), ledgerDto);
+        }
+
+        // Log the return
+        changeLogService.append("SALE_RETURN", sale.getId(), "RETURN", returnDto, "LOCAL_DEVICE");
+    }
+
+    /**
+     * Cancel entire sale
+     */
+    @Transactional
+    public void cancelSale(Long saleId, String reason) {
+        Sale sale = saleRepository.findById(saleId)
+                .orElseThrow(() -> new RuntimeException("Sale not found"));
+
+        // Restore stock for all items
+        for (SaleItem saleItem : sale.getSaleItems()) {
+            stockService.addStock(saleItem.getItemVariant().getId(), 
+                                saleItem.getQty(), 
+                                saleItem.getCostPerUnit(), 
+                                "Cancelled Sale #" + sale.getInvoiceNo());
+        }
+
+        // Reverse customer ledger entries if customer exists
+        if (sale.getCustomer() != null) {
+            // Reverse the original sale entry
+            CustomerLedgerDto reverseDto = new CustomerLedgerDto();
+            reverseDto.setAmount(sale.getTotalAmount());
+            reverseDto.setType(CustomerLedgerType.DEBIT); // Reverse the credit
+            reverseDto.setDescription("Cancelled Sale #" + sale.getInvoiceNo() + 
+                                    (reason != null ? " - " + reason : ""));
+            ledgerService.addEntry(sale.getCustomer().getId(), reverseDto);
+
+            // Reverse any payment entries
+            for (Payment payment : sale.getPayments()) {
+                CustomerLedgerDto paymentReverseDto = new CustomerLedgerDto();
+                paymentReverseDto.setAmount(payment.getAmountPaid());
+                paymentReverseDto.setType(CustomerLedgerType.CREDIT); // Reverse the debit
+                paymentReverseDto.setDescription("Cancelled Payment for Sale #" + sale.getInvoiceNo() + 
+                                               " (" + payment.getMethod() + ")");
+                ledgerService.addEntry(sale.getCustomer().getId(), paymentReverseDto);
+            }
+        }
+
+        // Mark sale as cancelled (you might want to add a status field to Sale entity)
+        sale.setTotalAmount(BigDecimal.ZERO);
+        sale.setCogs(BigDecimal.ZERO);
+        saleRepository.save(sale);
+
+        // Log the cancellation
+        changeLogService.append("SALE_CANCEL", sale.getId(), "CANCEL", 
+                               java.util.Map.of("reason", reason), "LOCAL_DEVICE");
+    }
+
+    /**
+     * Get sales profit report
+     */
+    public List<SalesProfitDto> getSalesProfitReport(LocalDateTime startDate, LocalDateTime endDate) {
+        List<Sale> sales = saleRepository.findByDateBetween(startDate, endDate);
+        
+        return sales.stream().map(sale -> {
+            BigDecimal grossProfit = sale.getTotalAmount().subtract(sale.getCogs());
+            BigDecimal marginPercent = sale.getTotalAmount().compareTo(BigDecimal.ZERO) > 0 
+                ? grossProfit.divide(sale.getTotalAmount(), 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
+
+            return new SalesProfitDto(
+                sale.getId(),
+                sale.getInvoiceNo(),
+                sale.getDate(),
+                sale.getTotalAmount(),
+                sale.getCogs(),
+                grossProfit,
+                marginPercent,
+                sale.getCustomer() != null ? sale.getCustomer().getName() : "Walk-in Customer"
+            );
+        }).collect(Collectors.toList());
+    }
+
+    private BigDecimal calculateReturnCOGS(SaleReturnDto returnDto) {
+        BigDecimal totalReturnCOGS = BigDecimal.ZERO;
+        
+        Sale sale = saleRepository.findById(returnDto.getSaleId())
+                .orElseThrow(() -> new RuntimeException("Sale not found"));
+
+        for (SaleReturnDto.SaleReturnItemDto returnItem : returnDto.getReturnItems()) {
+            SaleItem saleItem = sale.getSaleItems().stream()
+                    .filter(si -> si.getId().equals(returnItem.getSaleItemId()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Sale item not found"));
+
+            BigDecimal returnCOGS = saleItem.getCostPerUnit().multiply(returnItem.getReturnQuantity());
+            totalReturnCOGS = totalReturnCOGS.add(returnCOGS);
+        }
+
+        return totalReturnCOGS;
     }
 
     public Optional<SaleDto> getSaleById(Long id) {

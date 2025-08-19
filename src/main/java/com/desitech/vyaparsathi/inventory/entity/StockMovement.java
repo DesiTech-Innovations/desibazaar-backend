@@ -9,26 +9,31 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "stock_entry")
+@Table(name = "stock_movement")
 @Data
-public class StockEntry {
+public class StockMovement {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Change from Long itemId to a ManyToOne relationship with ItemVariant
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_variant_id", nullable = false)
     private ItemVariant itemVariant;
 
+    @Column(name = "movement_type", nullable = false)
+    private String movementType; // ADD, DEDUCT, ADJUST
+
+    @Column(nullable = false)
     private BigDecimal quantity;
 
-    @Column(name = "cost_per_unit", nullable = false)
+    @Column(name = "cost_per_unit")
     private BigDecimal costPerUnit;
 
     private String batch;
+    private String reason;
+    private String reference; // Reference to related transaction (e.g., Sale ID, Purchase Order ID)
 
     @Convert(converter = LocalDateTimeAttributeConverter.class)
-    @Column(name = "last_updated")
-    private LocalDateTime lastUpdated = LocalDateTime.now();
+    @Column(name = "timestamp", nullable = false)
+    private LocalDateTime timestamp = LocalDateTime.now();
 }

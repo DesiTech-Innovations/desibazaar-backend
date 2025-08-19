@@ -98,8 +98,13 @@ public class PurchaseService {
         }
 
         for (PurchaseOrderItem item : purchaseOrder.getItems()) {
-            // Call the simplified addStock method
-            stockService.addStock(item.getItemVariant().getId(), BigDecimal.valueOf(item.getQuantity()));
+            // Pass the cost information from the purchase order item
+            stockService.addStock(
+                item.getItemVariant().getId(), 
+                BigDecimal.valueOf(item.getQuantity()),
+                item.getUnitCost(),
+                "Purchase Order #" + purchaseOrder.getPoNumber()
+            );
         }
 
         purchaseOrder.setStatus("Received");
