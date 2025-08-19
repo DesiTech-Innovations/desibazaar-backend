@@ -5,6 +5,10 @@ import com.desitech.vyaparsathi.sales.dto.SaleDueDto;
 import com.desitech.vyaparsathi.sales.dto.SaleReturnDto;
 import com.desitech.vyaparsathi.sales.dto.SalesProfitDto;
 import com.desitech.vyaparsathi.sales.service.SaleService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -22,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/sales")
 @PreAuthorize("hasAnyRole('OWNER', 'STAFF')")
+@Tag(name = "Sales Management", description = "Operations for sales management including COGS tracking, returns, cancellations, and profit reporting")
 public class SaleController {
     @Autowired
     private SaleService service;
@@ -69,22 +74,35 @@ public class SaleController {
     }
 
     @PostMapping("/{id}/return")
-    public ResponseEntity<Void> processSaleReturn(@PathVariable Long id, @RequestBody SaleReturnDto returnDto) {
+    @Operation(summary = "Process sale return", 
+               description = "Process partial or full return of items from a sale. Automatically restores stock and handles payment/ledger reversal if requested.")
+    @ApiResponse(responseCode = "200", description = "Sale return processed successfully")
+    public ResponseEntity<Void> processSaleReturn(
+            @Parameter(description = "Sale ID") @PathVariable Long id, 
+            @RequestBody SaleReturnDto returnDto) {
         returnDto.setSaleId(id); // Ensure consistency
         service.processSaleReturn(returnDto);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<Void> cancelSale(@PathVariable Long id, @RequestParam String reason) {
+    @Operation(summary = "Cancel entire sale", 
+               description = "Cancel an entire sale transaction. Restores all stock, reverses all payments and ledger entries. Irreversible action.")
+    @ApiResponse(responseCode = "200", description = "Sale cancelled successfully")
+    public ResponseEntity<Void> cancelSale(
+            @Parameter(description = "Sale ID") @PathVariable Long id, 
+            @Parameter(description = "Reason for cancellation") @RequestParam String reason) {
         service.cancelSale(id, reason);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/profit-report")
+    @Operation(summary = "Get sales profit report", 
+               description = "Generate profit analysis report showing revenue, COGS, gross profit and margin percentage for sales within date range")
+    @ApiResponse(responseCode = "200", description = "Profit report generated successfully")
     public ResponseEntity<List<SalesProfitDto>> getSalesProfitReport(
-            @RequestParam LocalDateTime startDate,
-            @RequestParam LocalDateTime endDate) {
+            @Parameter(description = "Start date for profit report") @RequestParam LocalDateTime startDate,
+            @Parameter(description = "End date for profit report") @RequestParam LocalDateTime endDate) {
         return ResponseEntity.ok(service.getSalesProfitReport(startDate, endDate));
     }
 
