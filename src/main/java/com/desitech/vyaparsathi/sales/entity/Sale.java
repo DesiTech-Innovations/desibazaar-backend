@@ -44,6 +44,9 @@ public class Sale {
     @Column(nullable = false)
     private BigDecimal totalAmount;
 
+    @Column(name = "cogs", nullable = false)
+    private BigDecimal cogs = BigDecimal.ZERO;
+
     private BigDecimal roundOff;
 
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

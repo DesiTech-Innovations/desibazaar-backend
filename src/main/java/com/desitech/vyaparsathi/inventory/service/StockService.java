@@ -37,6 +37,7 @@ public class StockService {
         StockEntry entry = new StockEntry();
         entry.setItemVariant(itemVariant);
         entry.setQuantity(dto.getQuantity());
+        entry.setCostPerUnit(dto.getCostPerUnit() != null ? dto.getCostPerUnit() : BigDecimal.ZERO);
         entry.setBatch(dto.getBatch());
 
         stockEntryRepository.save(entry);
@@ -46,13 +47,20 @@ public class StockService {
     // New method for adding stock from a purchase order
     @Transactional
     public void addStock(Long itemVariantId, BigDecimal quantity) {
+        addStock(itemVariantId, quantity, BigDecimal.ZERO, "Purchase Order");
+    }
+
+    // Overloaded method for adding stock with cost
+    @Transactional
+    public void addStock(Long itemVariantId, BigDecimal quantity, BigDecimal costPerUnit, String batch) {
         ItemVariant itemVariant = itemVariantRepository.findById(itemVariantId)
                 .orElseThrow(() -> new RuntimeException("Item Variant not found"));
 
         StockEntry entry = new StockEntry();
         entry.setItemVariant(itemVariant);
         entry.setQuantity(quantity);
-        entry.setBatch("Purchase Order"); // Hardcoded batch for simplicity
+        entry.setCostPerUnit(costPerUnit != null ? costPerUnit : BigDecimal.ZERO);
+        entry.setBatch(batch != null ? batch : "Manual Entry");
 
         stockEntryRepository.save(entry);
     }
@@ -125,5 +133,38 @@ public class StockService {
 
     public BigDecimal getCurrentStock(Long itemVariantId) {
         return stockEntryRepository.getTotalQuantityByItemVariantId(itemVariantId);
+    }
+
+    /**
+     * Calculate COGS for a given quantity using FIFO method
+     * Returns the total cost of goods sold for the specified quantity
+     */
+    public BigDecimal calculateCOGSFifo(Long itemVariantId, BigDecimal quantityToSell) {
+        List<StockEntry> entries = stockEntryRepository.findByItemVariantId(itemVariantId)
+                .stream()
+                .sorted((e1, e2) -> {
+                    LocalDateTime date1 = e1.getLastUpdated() != null ? e1.getLastUpdated() : LocalDateTime.MIN;
+                    LocalDateTime date2 = e2.getLastUpdated() != null ? e2.getLastUpdated() : LocalDateTime.MIN;
+                    return date1.compareTo(date2); // FIFO: oldest first
+                })
+                .toList();
+
+        BigDecimal totalCost = BigDecimal.ZERO;
+        BigDecimal remaining = quantityToSell;
+
+        for (StockEntry entry : entries) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+
+            BigDecimal availableQty = entry.getQuantity();
+            if (availableQty.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+            BigDecimal qtyToUse = remaining.min(availableQty);
+            BigDecimal costForThisEntry = entry.getCostPerUnit().multiply(qtyToUse);
+            
+            totalCost = totalCost.add(costForThisEntry);
+            remaining = remaining.subtract(qtyToUse);
+        }
+
+        return totalCost;
     }
 }

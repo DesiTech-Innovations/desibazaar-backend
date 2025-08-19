@@ -23,6 +23,9 @@ public class StockEntry {
 
     private BigDecimal quantity;
 
+    @Column(name = "cost_per_unit", nullable = false)
+    private BigDecimal costPerUnit;
+
     private String batch;
 
     @Convert(converter = LocalDateTimeAttributeConverter.class)

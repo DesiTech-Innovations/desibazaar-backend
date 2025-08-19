@@ -75,6 +75,7 @@ public class SaleService {
         List<SaleItem> saleItems = new ArrayList<>();
         BigDecimal totalTaxableValue = BigDecimal.ZERO;
         BigDecimal totalGSTAmount = BigDecimal.ZERO;
+        BigDecimal totalCOGS = BigDecimal.ZERO; // Track total COGS for this sale
 
         for (SaleItemDto itemDto : dto.getItems()) {
             if (!stockService.isStockAvailable(itemDto.getItemVariantId(), itemDto.getQty())) {
@@ -84,10 +85,16 @@ public class SaleService {
             ItemVariant itemVariant = itemVariantRepository.findById(itemDto.getItemVariantId())
                     .orElseThrow(() -> new RuntimeException("Item Variant not found for ID: " + itemDto.getItemVariantId()));
 
+            // Calculate COGS for this item using FIFO
+            BigDecimal itemCOGS = stockService.calculateCOGSFifo(itemDto.getItemVariantId(), itemDto.getQty());
+            BigDecimal costPerUnit = itemCOGS.divide(itemDto.getQty(), 4, RoundingMode.HALF_UP);
+            totalCOGS = totalCOGS.add(itemCOGS);
+
             SaleItem saleItem = new SaleItem();
             saleItem.setItemVariant(itemVariant);
             saleItem.setQty(itemDto.getQty());
             saleItem.setUnitPrice(itemDto.getUnitPrice());
+            saleItem.setCostPerUnit(costPerUnit); // Set the cost per unit for this sale item
 
             if (Boolean.TRUE.equals(dto.getIsGstRequired()) && itemVariant.getGstRate() != null) {
                 GSTType gstType = GSTType.fromRate(itemVariant.getGstRate());
@@ -148,6 +155,7 @@ public class SaleService {
         sale.setShop(shop);
         sale.setCustomer(customer);
         sale.setTotalAmount(finalTotalAmount);
+        sale.setCogs(totalCOGS); // Set the total COGS for this sale
         sale.setRoundOff(roundOff.negate());
         sale.setSyncedFlag(false);
         sale.setSaleItems(saleItems);

@@ -12,6 +12,7 @@ public class StockEntryDto {
     private Long id;
     private Long itemVariantId;
     private BigDecimal quantity;
+    private BigDecimal costPerUnit;
     private String batch;
     @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     private LocalDateTime lastUpdated;

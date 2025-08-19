@@ -30,5 +30,6 @@ public class SaleDto {
 
     private BigDecimal roundOff;
     private BigDecimal totalAmount;
+    private BigDecimal cogs;
 
 }
