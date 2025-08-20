@@ -15,10 +15,11 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     @Query("SELECT s FROM Sale s JOIN FETCH s.customer JOIN FETCH s.payments WHERE s.customer.id = :customerId")
     Page<Sale> findByCustomerId(@Param("customerId") Long customerId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"saleItems", "customer", "payments"}, type = EntityGraph.EntityGraphType.LOAD)
     @Query("SELECT s FROM Sale s WHERE (:startDate IS NULL OR s.date >= :startDate) AND (:endDate IS NULL OR s.date <= :endDate) ORDER BY s.date DESC")
     List<Sale> findByDateBetween(@Param("startDate") LocalDateTime start, @Param("endDate") LocalDateTime end);
 
-    @EntityGraph(attributePaths = {"payments"}, type = EntityGraph.EntityGraphType.LOAD)
+    @EntityGraph(attributePaths = {"saleItems", "customer", "payments"}, type = EntityGraph.EntityGraphType.LOAD)
     List<Sale> findAll();
 
     // Optional: Keep this if needed for other use cases

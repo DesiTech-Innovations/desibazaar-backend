@@ -2,15 +2,12 @@ package com.desitech.vyaparsathi.reports.service;
 
 import com.desitech.vyaparsathi.payment.entity.Payment;
 import com.desitech.vyaparsathi.payment.service.PaymentService;
+import com.desitech.vyaparsathi.reports.dto.*;
 import com.desitech.vyaparsathi.sales.entity.Sale;
 import com.desitech.vyaparsathi.sales.entity.SaleItem;
 import com.desitech.vyaparsathi.sales.repository.SaleRepository;
 import com.desitech.vyaparsathi.expense.entity.Expense;
 import com.desitech.vyaparsathi.expense.repository.ExpenseRepository;
-import com.desitech.vyaparsathi.reports.dto.DailyReportDto;
-import com.desitech.vyaparsathi.reports.dto.GstSummaryDto;
-import com.desitech.vyaparsathi.reports.dto.GstBreakdownDto;
-import com.desitech.vyaparsathi.reports.dto.SalesSummaryDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -222,5 +219,106 @@ public class ReportService {
                     return dto;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public List<ItemsSoldDto> getAllItemsSold(LocalDate fromDate, LocalDate toDate) {
+        List<Sale> sales = getSalesByDateRange(fromDate, toDate);
+        Map<Long, ItemsSoldDto> itemMap = new HashMap<>();
+        for (Sale sale : sales) {
+            for (SaleItem item : sale.getSaleItems()) {
+                Long itemId = item.getItemVariant().getId();
+                ItemsSoldDto dto = itemMap.getOrDefault(itemId, new ItemsSoldDto(
+                        itemId,
+                        item.getItemVariant().getItem().getName(),
+                        item.getItemVariant().getSku(),
+                        0,
+                        BigDecimal.ZERO,
+                        null
+                ));
+                dto.setTotalSold(dto.getTotalSold() + item.getQty().intValue());
+                dto.setTotalSales(dto.getTotalSales().add(item.getUnitPrice().multiply(item.getQty())));
+                LocalDate saleDate = sale.getDate().toLocalDate();
+                if (dto.getLastSoldDate() == null || saleDate.isAfter(dto.getLastSoldDate())) {
+                    dto.setLastSoldDate(saleDate);
+                }
+                itemMap.put(itemId, dto);
+            }
+        }
+        return new ArrayList<>(itemMap.values());
+    }
+
+    public List<CategorySalesDto> getCategorySales(LocalDate fromDate, LocalDate toDate) {
+        List<Sale> sales = getSalesByDateRange(fromDate, toDate);
+        Map<String, CategorySalesDto> categoryMap = new HashMap<>();
+        for (Sale sale : sales) {
+            for (SaleItem item : sale.getSaleItems()) {
+                String category = item.getItemVariant().getItem().getCategory();
+                CategorySalesDto dto = categoryMap.getOrDefault(category, new CategorySalesDto(
+                        category,
+                        0,
+                        BigDecimal.ZERO
+                ));
+                dto.setTotalSold(dto.getTotalSold() + item.getQty().intValue());
+                dto.setTotalSales(dto.getTotalSales().add(item.getUnitPrice().multiply(item.getQty())));
+                categoryMap.put(category, dto);
+            }
+        }
+        return new ArrayList<>(categoryMap.values());
+    }
+
+    public List<CustomerSalesDto> getCustomerSales(LocalDate fromDate, LocalDate toDate) {
+        List<Sale> sales = getSalesByDateRange(fromDate, toDate);
+        Map<Long, CustomerSalesDto> customerMap = new HashMap<>();
+        for (Sale sale : sales) {
+            if (sale.getCustomer() == null) continue;
+            Long customerId = sale.getCustomer().getId();
+            CustomerSalesDto dto = customerMap.getOrDefault(customerId, new CustomerSalesDto(
+                    customerId,
+                    sale.getCustomer().getName(),
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO
+            ));
+            dto.setTotalSales(dto.getTotalSales().add(sale.getTotalAmount()));
+            // Outstanding = total - paid
+            BigDecimal paid = sale.getPayments() != null ? sale.getPayments().stream()
+                    .map(p -> p.getAmountPaid() != null ? p.getAmountPaid() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add) : BigDecimal.ZERO;
+            dto.setTotalDue(dto.getTotalDue().add(sale.getTotalAmount().subtract(paid)));
+            customerMap.put(customerId, dto);
+        }
+        return new ArrayList<>(customerMap.values());
+    }
+
+    public ExpensesSummaryDto getExpensesSummary(LocalDate fromDate, LocalDate toDate) {
+        List<Expense> expenses = getExpensesByDateRange(fromDate, toDate);
+        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal operational = BigDecimal.ZERO;
+        BigDecimal inventory = BigDecimal.ZERO;
+        for (Expense e : expenses) {
+            total = total.add(e.getAmount() != null ? e.getAmount() : BigDecimal.ZERO);
+            if (e.getType() != null && e.getType().toLowerCase().contains("inventory")) {
+                inventory = inventory.add(e.getAmount() != null ? e.getAmount() : BigDecimal.ZERO);
+            } else {
+                operational = operational.add(e.getAmount() != null ? e.getAmount() : BigDecimal.ZERO);
+            }
+        }
+        return new ExpensesSummaryDto(total, operational, inventory);
+    }
+
+    public PaymentsSummaryDto getPaymentsSummary(LocalDate fromDate, LocalDate toDate) {
+        List<Sale> sales = getSalesByDateRange(fromDate, toDate);
+        BigDecimal totalPayments = BigDecimal.ZERO;
+        int paymentCount = 0;
+        for (Sale sale : sales) {
+            if (sale.getPayments() != null) {
+                for (var payment : sale.getPayments()) {
+                    if (payment.getAmountPaid() != null) {
+                        totalPayments = totalPayments.add(payment.getAmountPaid());
+                        paymentCount++;
+                    }
+                }
+            }
+        }
+        return new PaymentsSummaryDto(totalPayments, paymentCount);
     }
 }

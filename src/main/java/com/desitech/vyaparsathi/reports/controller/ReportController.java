@@ -1,9 +1,6 @@
 package com.desitech.vyaparsathi.reports.controller;
 
-import com.desitech.vyaparsathi.reports.dto.DailyReportDto;
-import com.desitech.vyaparsathi.reports.dto.GstSummaryDto;
-import com.desitech.vyaparsathi.reports.dto.GstBreakdownDto;
-import com.desitech.vyaparsathi.reports.dto.SalesSummaryDto;
+import com.desitech.vyaparsathi.reports.dto.*;
 import com.desitech.vyaparsathi.reports.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -78,5 +75,90 @@ public class ReportController {
             @Parameter(description = "End date in YYYY-MM-DD format", example = "2024-01-31")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(service.getGstSummaryByRate(from, to));
+    }
+
+    @GetMapping("/items-sold")
+    @Operation(summary = "Get all items sold", description = "Returns a list of all items sold with quantity, total sales, and last sold date.")
+    public ResponseEntity<List<ItemsSoldDto>> getAllItemsSold(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String to
+    ) {
+        LocalDate fromDate = (from == null || from.isBlank() || "undefined".equalsIgnoreCase(from))
+                ? null
+                : LocalDate.parse(from);
+
+        LocalDate toDate = (to == null || to.isBlank() || "undefined".equalsIgnoreCase(to))
+                ? null
+                : LocalDate.parse(to);
+
+        return ResponseEntity.ok(service.getAllItemsSold(fromDate, toDate));
+    }
+
+    @GetMapping("/category-sales")
+    @Operation(summary = "Get sales by category", description = "Returns sales totals grouped by item category.")
+    public ResponseEntity<List<CategorySalesDto>> getCategorySales(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String to
+    ) {
+        LocalDate fromDate = (from == null || from.isBlank() || "undefined".equalsIgnoreCase(from))
+                ? null
+                : LocalDate.parse(from);
+
+        LocalDate toDate = (to == null || to.isBlank() || "undefined".equalsIgnoreCase(to))
+                ? null
+                : LocalDate.parse(to);
+
+        return ResponseEntity.ok(service.getCategorySales(fromDate, toDate));
+    }
+
+    @GetMapping("/customer-sales")
+    @Operation(summary = "Get sales by customer", description = "Returns sales totals grouped by customer.")
+    public ResponseEntity<List<CustomerSalesDto>> getCustomerSales(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String to
+    ) {
+        LocalDate fromDate = (from == null || from.isBlank() || "undefined".equalsIgnoreCase(from))
+                ? null
+                : LocalDate.parse(from);
+
+        LocalDate toDate = (to == null || to.isBlank() || "undefined".equalsIgnoreCase(to))
+                ? null
+                : LocalDate.parse(to);
+
+        return ResponseEntity.ok(service.getCustomerSales(fromDate, toDate));
+    }
+
+    @GetMapping("/expenses-summary")
+    @Operation(summary = "Get expenses summary", description = "Returns total expenses for a date range.")
+    public ResponseEntity<ExpensesSummaryDto> getExpensesSummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String to
+    ) {
+        LocalDate fromDate = (from == null || from.isBlank() || "undefined".equalsIgnoreCase(from))
+                ? null
+                : LocalDate.parse(from);
+
+        LocalDate toDate = (to == null || to.isBlank() || "undefined".equalsIgnoreCase(to))
+                ? null
+                : LocalDate.parse(to);
+
+        return ResponseEntity.ok(service.getExpensesSummary(fromDate, toDate));
+    }
+
+    @GetMapping("/payments-summary")
+    @Operation(summary = "Get payments summary", description = "Returns total payments collected for a date range.")
+    public ResponseEntity<PaymentsSummaryDto> getPaymentsSummary(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) String to
+    ) {
+        LocalDate fromDate = (from == null || from.isBlank() || "undefined".equalsIgnoreCase(from))
+                ? null
+                : LocalDate.parse(from);
+
+        LocalDate toDate = (to == null || to.isBlank() || "undefined".equalsIgnoreCase(to))
+                ? null
+                : LocalDate.parse(to);
+
+        return ResponseEntity.ok(service.getPaymentsSummary(fromDate, toDate));
     }
 }
