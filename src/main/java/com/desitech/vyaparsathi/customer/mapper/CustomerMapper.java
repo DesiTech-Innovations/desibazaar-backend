@@ -11,4 +11,6 @@ public interface CustomerMapper {
     Customer toEntity(CustomerDto dto);
     CustomerDto toDto(Customer entity);
     List<CustomerDto> toDtoList(List<Customer> entities);
+
+    void updateEntityFromDto(CustomerDto dto, @org.mapstruct.MappingTarget Customer customer);
 }

@@ -1,9 +1,9 @@
 package com.desitech.vyaparsathi.product.service;
 
-import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
+import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
 import com.desitech.vyaparsathi.inventory.entity.StockEntry;
 import com.desitech.vyaparsathi.product.dto.ProductDto;
-import com.desitech.vyaparsathi.catalog.repository.ItemVariantRepository;
+import com.desitech.vyaparsathi.inventory.repository.ItemVariantRepository;
 import com.desitech.vyaparsathi.inventory.repository.StockEntryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

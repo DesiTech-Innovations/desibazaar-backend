@@ -1,9 +1,9 @@
 package com.desitech.vyaparsathi.reports.service;
 
-import com.desitech.vyaparsathi.catalog.entity.Item;
-import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
-import com.desitech.vyaparsathi.inventory.entity.PurchaseOrderItem;
-import com.desitech.vyaparsathi.inventory.repository.PurchaseOrderItemRepository;
+import com.desitech.vyaparsathi.inventory.entity.Item;
+import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
+import com.desitech.vyaparsathi.purchaseorder.entity.PurchaseOrderItem;
+import com.desitech.vyaparsathi.purchaseorder.repository.PurchaseOrderItemRepository;
 import com.desitech.vyaparsathi.sales.entity.Sale;
 import com.desitech.vyaparsathi.sales.entity.SaleItem;
 import org.junit.jupiter.api.BeforeEach;

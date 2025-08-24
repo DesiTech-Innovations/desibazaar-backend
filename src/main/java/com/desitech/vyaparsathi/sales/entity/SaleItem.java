@@ -1,6 +1,6 @@
 package com.desitech.vyaparsathi.sales.entity;
 
-import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
+import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
 import com.desitech.vyaparsathi.sales.GSTType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;

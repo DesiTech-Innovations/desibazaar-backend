@@ -1,6 +1,7 @@
 package com.desitech.vyaparsathi.reports.service;
 
 import com.desitech.vyaparsathi.payment.entity.Payment;
+import com.desitech.vyaparsathi.payment.enums.PaymentSourceType;
 import com.desitech.vyaparsathi.payment.service.PaymentService;
 import com.desitech.vyaparsathi.reports.dto.*;
 import com.desitech.vyaparsathi.sales.entity.Sale;
@@ -11,15 +12,19 @@ import com.desitech.vyaparsathi.expense.repository.ExpenseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReportService.class);
 
     @Autowired
     private SaleRepository saleRepository;
@@ -66,13 +71,12 @@ public class ReportService {
                 .filter(amount -> amount != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalPaid = sales.stream()
-                .filter(sale -> sale.getId() != null)
-                .map(sale -> paymentService.getPaymentsBySaleId(sale.getId()).stream()
-                        .map(Payment::getAmountPaid)
-                        .filter(amount -> amount != null)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    BigDecimal totalPaid = sales.stream()
+        .filter(sale -> sale.getId() != null)
+        .map(sale -> paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId()).stream()
+            .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add))
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Calculate COGS for sold items
         BigDecimal totalCOGS = cogsCalculationService.calculateCOGS(sales);
@@ -103,19 +107,19 @@ public class ReportService {
 
         BigDecimal totalSales = sales.stream()
                 .map(Sale::getTotalAmount)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalTaxableValue = sales.stream()
                 .flatMap(s -> s.getSaleItems().stream())
                 .map(SaleItem::getTaxableValue)
-                .filter(value -> value != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Only include operational expenses (inventory purchases should not be here due to validation)
         BigDecimal totalOperationalExpenses = expenses.stream()
                 .map(Expense::getAmount)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalGstAmount = sales.stream()
@@ -130,16 +134,15 @@ public class ReportService {
 
         BigDecimal totalRoundOff = sales.stream()
                 .map(Sale::getRoundOff)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalPaid = sales.stream()
-                .filter(sale -> sale.getId() != null)
-                .map(sale -> paymentService.getPaymentsBySaleId(sale.getId()).stream()
-                        .map(Payment::getAmountPaid)
-                        .filter(amount -> amount != null)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    BigDecimal totalPaid = sales.stream()
+        .filter(sale -> sale.getId() != null)
+        .map(sale -> paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId()).stream()
+            .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add))
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Calculate COGS for the period
         BigDecimal totalCOGS = cogsCalculationService.calculateCOGSForPeriod(sales, from, to);
@@ -280,9 +283,9 @@ public class ReportService {
             ));
             dto.setTotalSales(dto.getTotalSales().add(sale.getTotalAmount()));
             // Outstanding = total - paid
-            BigDecimal paid = sale.getPayments() != null ? sale.getPayments().stream()
-                    .map(p -> p.getAmountPaid() != null ? p.getAmountPaid() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add) : BigDecimal.ZERO;
+        BigDecimal paid = sale.getPayments() != null ? sale.getPayments().stream()
+            .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add) : BigDecimal.ZERO;
             dto.setTotalDue(dto.getTotalDue().add(sale.getTotalAmount().subtract(paid)));
             customerMap.put(customerId, dto);
         }
@@ -312,8 +315,8 @@ public class ReportService {
         for (Sale sale : sales) {
             if (sale.getPayments() != null) {
                 for (var payment : sale.getPayments()) {
-                    if (payment.getAmountPaid() != null) {
-                        totalPayments = totalPayments.add(payment.getAmountPaid());
+                    if (payment.getAmount() != null) {
+                        totalPayments = totalPayments.add(payment.getAmount());
                         paymentCount++;
                     }
                 }

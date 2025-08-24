@@ -22,6 +22,9 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     @EntityGraph(attributePaths = {"saleItems", "customer", "payments"}, type = EntityGraph.EntityGraphType.LOAD)
     List<Sale> findAll();
 
+    @EntityGraph(attributePaths = {"saleItems", "customer", "payments"}, type = EntityGraph.EntityGraphType.LOAD)
+    Sale findByInvoiceNo(String invoiceNo);
+
     // Optional: Keep this if needed for other use cases
     /*
     @Query("SELECT s FROM Sale s JOIN FETCH s.payments")

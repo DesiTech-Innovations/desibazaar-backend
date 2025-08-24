@@ -1,7 +1,14 @@
 package com.desitech.vyaparsathi.inventory.service;
 
-import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
-import com.desitech.vyaparsathi.catalog.repository.ItemVariantRepository;
+import com.desitech.vyaparsathi.common.exception.ApplicationException;
+import com.desitech.vyaparsathi.common.exception.EntityNotFoundAppException;
+import com.desitech.vyaparsathi.common.exception.InsufficientStockException;
+import com.desitech.vyaparsathi.common.exception.ValidationAppException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
+import com.desitech.vyaparsathi.inventory.repository.ItemVariantRepository;
 import com.desitech.vyaparsathi.inventory.dto.*;
 import com.desitech.vyaparsathi.inventory.entity.StockEntry;
 import com.desitech.vyaparsathi.inventory.entity.StockMovement;
@@ -21,6 +28,8 @@ import java.util.stream.Collectors;
 @Service
 public class StockService {
 
+    private static final Logger logger = LoggerFactory.getLogger(StockService.class);
+
     @Autowired
     private StockEntryRepository stockEntryRepository;
 
@@ -35,8 +44,8 @@ public class StockService {
 
     @Transactional
     public StockEntryDto addStockFromDto(StockAddDto dto) {
-        ItemVariant itemVariant = itemVariantRepository.findById(dto.getItemVariantId())
-                .orElseThrow(() -> new RuntimeException("Item Variant not found"));
+    ItemVariant itemVariant = itemVariantRepository.findById(dto.getItemVariantId())
+        .orElseThrow(() -> new EntityNotFoundAppException("Item Variant", dto.getItemVariantId()));
 
         StockEntry entry = new StockEntry();
         entry.setItemVariant(itemVariant);
@@ -62,8 +71,8 @@ public class StockService {
     // Overloaded method for adding stock with cost
     @Transactional
     public void addStock(Long itemVariantId, BigDecimal quantity, BigDecimal costPerUnit, String batch) {
-        ItemVariant itemVariant = itemVariantRepository.findById(itemVariantId)
-                .orElseThrow(() -> new RuntimeException("Item Variant not found"));
+    ItemVariant itemVariant = itemVariantRepository.findById(itemVariantId)
+        .orElseThrow(() -> new EntityNotFoundAppException("Item Variant", itemVariantId));
 
         StockEntry entry = new StockEntry();
         entry.setItemVariant(itemVariant);
@@ -116,7 +125,8 @@ public class StockService {
     public void deductStock(Long itemVariantId, BigDecimal quantityToDeduct, String reason, String reference) {
         BigDecimal currentTotal = stockEntryRepository.getTotalQuantityByItemVariantId(itemVariantId);
         if (currentTotal == null || currentTotal.compareTo(quantityToDeduct) < 0) {
-            throw new RuntimeException("Insufficient stock for item variant " + itemVariantId);
+            logger.warn("Insufficient stock for item variant {} (requested: {}, available: {})", itemVariantId, quantityToDeduct, currentTotal);
+            throw new InsufficientStockException("Insufficient stock for item variant " + itemVariantId);
         }
 
         List<StockEntry> entries = stockEntryRepository.findByItemVariantId(itemVariantId)
@@ -195,8 +205,8 @@ public class StockService {
      */
     private void recordStockMovement(Long itemVariantId, String movementType, BigDecimal quantity, 
                                    BigDecimal costPerUnit, String batch, String reason, String reference) {
-        ItemVariant itemVariant = itemVariantRepository.findById(itemVariantId)
-                .orElseThrow(() -> new RuntimeException("Item Variant not found"));
+    ItemVariant itemVariant = itemVariantRepository.findById(itemVariantId)
+        .orElseThrow(() -> new EntityNotFoundAppException("Item Variant", itemVariantId));
 
         StockMovement movement = new StockMovement();
         movement.setItemVariant(itemVariant);
@@ -262,11 +272,12 @@ public class StockService {
     @Transactional
     public StockEntryDto adjustStock(StockAdjustmentDto dto) {
         if (dto.getReason() == null || dto.getReason().trim().isEmpty()) {
-            throw new IllegalArgumentException("Reason is required for stock adjustment");
+            logger.error("Stock adjustment failed: reason is required. DTO: {}", dto);
+            throw new ValidationAppException("Reason is required for stock adjustment");
         }
 
-        ItemVariant itemVariant = itemVariantRepository.findById(dto.getItemVariantId())
-                .orElseThrow(() -> new RuntimeException("Item Variant not found"));
+    ItemVariant itemVariant = itemVariantRepository.findById(dto.getItemVariantId())
+        .orElseThrow(() -> new EntityNotFoundAppException("Item Variant", dto.getItemVariantId()));
 
         // Record the movement first
         recordStockMovement(dto.getItemVariantId(), "ADJUST", dto.getAdjustmentQuantity(), 

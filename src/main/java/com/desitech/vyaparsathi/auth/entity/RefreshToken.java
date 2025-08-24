@@ -20,4 +20,10 @@ public class RefreshToken {
 
     @Column(nullable = false)
     private Instant expiryDate;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdDate = Instant.now();
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    private boolean revoked;
 }

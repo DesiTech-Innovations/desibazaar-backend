@@ -1,5 +1,6 @@
 package com.desitech.vyaparsathi.auth.service;
 
+import com.desitech.vyaparsathi.auth.dto.AuthResponse;
 import com.desitech.vyaparsathi.auth.dto.RegisterRequest;
 import com.desitech.vyaparsathi.auth.entity.User;
 import com.desitech.vyaparsathi.auth.entity.RefreshToken;
@@ -8,6 +9,7 @@ import com.desitech.vyaparsathi.auth.security.JwtUtil;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,18 +32,13 @@ public class AuthService {
     @Autowired
     private RefreshTokenService refreshTokenService;
 
-    public String authenticateAndGenerateToken(String username, String pin) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new BadCredentialsException("Invalid username or PIN"));
-
+    public String authenticateAndGenerateToken(User user, String pin) {
         if (!user.isActive()) {
-            throw new BadCredentialsException("User is inactive");
+            throw new UsernameNotFoundException("User is inactive");
         }
-
         if (!passwordEncoder.matches(pin, user.getPinHash())) {
             throw new BadCredentialsException("Invalid username or PIN");
         }
-
         return jwtUtil.generateAccessToken(user.getUsername(), user.getRole().name());
     }
 
@@ -72,15 +69,24 @@ public class AuthService {
 
     // Call this on login to issue refresh token
     public String createRefreshToken(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
         return refreshTokenService.createRefreshToken(username).getToken();
     }
-    public String refreshAccessToken(String refreshToken) {
+    public AuthResponse refreshAccessToken(String refreshToken) {
         RefreshToken token = refreshTokenService.findByToken(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
         if (refreshTokenService.isExpired(token)) {
             refreshTokenService.deleteByUsername(token.getUsername());
             throw new RuntimeException("Refresh token expired");
         }
-        return jwtUtil.generateRefreshToken(token.getUsername());
+        User user = getUserByUsername(token.getUsername());
+        String newAccessToken = jwtUtil.generateAccessToken(user.getUsername(), user.getRole().name());
+        return new AuthResponse(newAccessToken, refreshToken, user.getRole().name());
+    }
+
+    public User getUserByUsername(String username){
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found"));
     }
 }

@@ -1,26 +1,30 @@
 package com.desitech.vyaparsathi.analytics.service;
 
+import com.desitech.vyaparsathi.common.exception.EntityNotFoundAppException;
+import com.desitech.vyaparsathi.purchaseorder.repository.PurchaseOrderItemRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.desitech.vyaparsathi.analytics.dto.*;
 import com.desitech.vyaparsathi.sales.entity.Sale;
 import com.desitech.vyaparsathi.sales.entity.SaleItem;
 import com.desitech.vyaparsathi.sales.repository.SaleRepository;
 import com.desitech.vyaparsathi.customer.entity.Customer;
 import com.desitech.vyaparsathi.customer.repository.CustomerRepository;
-import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
-import com.desitech.vyaparsathi.catalog.repository.ItemVariantRepository;
+import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
+import com.desitech.vyaparsathi.inventory.repository.ItemVariantRepository;
 import com.desitech.vyaparsathi.inventory.repository.StockEntryRepository;
-import com.desitech.vyaparsathi.inventory.repository.PurchaseOrderItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class AnalyticsService {
+    private static final Logger logger = LoggerFactory.getLogger(AnalyticsService.class);
 
     @Autowired
     private SaleRepository saleRepository;
@@ -48,21 +52,22 @@ public class AnalyticsService {
         }
         List<ItemDemandPredictionDto> result = new ArrayList<>();
         for (Map.Entry<Long, Integer> entry : demandMap.entrySet()) {
-            ItemVariant variant = itemVariantRepository.findById(entry.getKey()).orElse(null);
-            if (variant != null) {
-                result.add(new ItemDemandPredictionDto(
-                        variant.getId(),
-                        variant.getItem().getName(),
-                        entry.getValue(),
-                        "stable" // Placeholder, can be improved with trend analysis
-                ));
-            }
+            ItemVariant variant = itemVariantRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new EntityNotFoundAppException("ItemVariant", entry.getKey()));
+            result.add(new ItemDemandPredictionDto(
+                    variant.getId(),
+                    variant.getItem().getName(),
+                    entry.getValue(),
+                    "stable" // Placeholder, can be improved with trend analysis
+            ));
         }
+        logger.info("Predicted item demand for {} items", result.size());
         return result;
     }
 
     // 2. Customer buying trends (most frequent items, buying pattern)
     public List<CustomerTrendDto> getCustomerTrends(Long customerId) {
+    logger.info("Calculating customer trends for customerId={}", customerId);
         List<Customer> customers = customerId == null ? customerRepository.findAll() :
                 customerRepository.findById(customerId).map(List::of).orElse(List.of());
         List<CustomerTrendDto> result = new ArrayList<>();
@@ -93,6 +98,7 @@ public class AnalyticsService {
 
     // 3. Suggest future purchase orders (low stock items)
     public List<PurchaseOrderSuggestionDto> suggestFuturePurchaseOrders() {
+    logger.info("Suggesting future purchase orders for low stock items");
         List<ItemVariant> variants = itemVariantRepository.findAll();
         List<PurchaseOrderSuggestionDto> result = new ArrayList<>();
         for (ItemVariant variant : variants) {
@@ -112,6 +118,7 @@ public class AnalyticsService {
 
     // 4. Top rising/falling items (compare sales in last month vs previous month)
     public List<TopItemDto> getTopRisingFallingItems() {
+    logger.info("Calculating top rising/falling items");
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime lastMonth = now.minusMonths(1);
         LocalDateTime prevMonth = now.minusMonths(2);
@@ -153,6 +160,7 @@ public class AnalyticsService {
 
     // 5. Seasonal trends (sales grouped by month/season)
     public List<SeasonalTrendDto> getSeasonalTrends() {
+    logger.info("Calculating seasonal sales trends");
         List<Sale> sales = saleRepository.findAll();
         Map<Integer, Integer> monthSales = new HashMap<>();
         for (Sale sale : sales) {
@@ -170,6 +178,7 @@ public class AnalyticsService {
 
     // 6. Churn prediction (customers with no purchase in last 3 months)
     public List<ChurnPredictionDto> predictChurn() {
+    logger.info("Predicting customer churn");
         LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
         List<Customer> customers = customerRepository.findAll();
         List<ChurnPredictionDto> result = new ArrayList<>();

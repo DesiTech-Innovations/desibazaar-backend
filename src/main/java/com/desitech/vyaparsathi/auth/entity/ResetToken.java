@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reset_tokens")
+@Table(name = "reset_token")
 @Data
 @NoArgsConstructor
 public class ResetToken {
@@ -23,4 +23,7 @@ public class ResetToken {
 
     @Column(nullable = false)
     private LocalDateTime expiry;
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
+    private Boolean used = false;
 }

@@ -1,5 +1,9 @@
 package com.desitech.vyaparsathi.sales.controller;
 
+import com.desitech.vyaparsathi.common.exception.ApplicationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.desitech.vyaparsathi.sales.dto.SaleDto;
 import com.desitech.vyaparsathi.sales.dto.SaleDueDto;
 import com.desitech.vyaparsathi.sales.dto.SaleReturnDto;
@@ -28,49 +32,94 @@ import java.util.List;
 @PreAuthorize("hasAnyRole('OWNER', 'STAFF')")
 @Tag(name = "Sales Management", description = "Operations for sales management including COGS tracking, returns, cancellations, and profit reporting")
 public class SaleController {
+
+    private static final Logger logger = LoggerFactory.getLogger(SaleController.class);
     @Autowired
     private SaleService service;
 
     @PostMapping
     public ResponseEntity<byte[]> create(@Valid @RequestBody SaleDto dto) {
-        byte[] pdf = service.createSale(dto);
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=invoice.pdf")
-                .body(pdf);
+        try {
+            byte[] pdf = service.createSale(dto);
+            logger.info("Created sale and generated invoice for customerId={}", dto.getCustomerId());
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=invoice.pdf")
+                    .body(pdf);
+        } catch (Exception e) {
+            logger.error("Error creating sale for customerId={}: {}", dto.getCustomerId(), e.getMessage(), e);
+            throw new ApplicationException("Failed to create sale", e);
+        }
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<SaleDto> getSale(@PathVariable Long id) {
-        return service.getSaleById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            var result = service.getSaleById(id);
+            if (result.isPresent()) {
+                logger.info("Fetched sale with id={}", id);
+                return ResponseEntity.ok(result.get());
+            } else {
+                logger.warn("Sale not found with id={}", id);
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            logger.error("Error fetching sale with id={}: {}", id, e.getMessage(), e);
+            throw new ApplicationException("Failed to fetch sale", e);
+        }
     }
 
     @GetMapping
     public ResponseEntity<List<SaleDto>> listSales(
             @RequestParam(required = false) LocalDateTime startDate,
             @RequestParam(required = false) LocalDateTime endDate) {
-        return ResponseEntity.ok(service.listSales(startDate, endDate));
+        try {
+            var result = service.listSales(startDate, endDate);
+            logger.info("Fetched sales list from {} to {}", startDate, endDate);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Error fetching sales list from {} to {}: {}", startDate, endDate, e.getMessage(), e);
+            throw new ApplicationException("Failed to fetch sales list", e);
+        }
     }
 
     @GetMapping("/with-due")
     public ResponseEntity<List<SaleDueDto>> getSalesWithDue() {
-        return ResponseEntity.ok(service.getSalesWithDue());
+        try {
+            var result = service.getSalesWithDue();
+            logger.info("Fetched sales with due");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Error fetching sales with due: {}", e.getMessage(), e);
+            throw new ApplicationException("Failed to fetch sales with due", e);
+        }
     }
 
     @GetMapping("/{id}/due")
     public ResponseEntity<SaleDueDto> getSaleDueBySaleId(@PathVariable Long id) {
-        return ResponseEntity.ok(service.getSaleDueBySaleId(id));
+        try {
+            var result = service.getSaleDueBySaleId(id);
+            logger.info("Fetched sale due for saleId={}", id);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Error fetching sale due for saleId={}: {}", id, e.getMessage(), e);
+            throw new ApplicationException("Failed to fetch sale due", e);
+        }
     }
     @GetMapping("/{customerId}/dues")
     public ResponseEntity<Page<SaleDueDto>> getCustomerDues(
             @PathVariable Long customerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<SaleDueDto> dues = service.getDuesByCustomerId(customerId, pageable);
-        return ResponseEntity.ok(dues);
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<SaleDueDto> dues = service.getDuesByCustomerId(customerId, pageable);
+            logger.info("Fetched customer dues for customerId={}", customerId);
+            return ResponseEntity.ok(dues);
+        } catch (Exception e) {
+            logger.error("Error fetching customer dues for customerId={}: {}", customerId, e.getMessage(), e);
+            throw new ApplicationException("Failed to fetch customer dues", e);
+        }
     }
 
     @PostMapping("/{id}/return")
@@ -80,9 +129,15 @@ public class SaleController {
     public ResponseEntity<Void> processSaleReturn(
             @Parameter(description = "Sale ID") @PathVariable Long id, 
             @RequestBody SaleReturnDto returnDto) {
-        returnDto.setSaleId(id); // Ensure consistency
-        service.processSaleReturn(returnDto);
-        return ResponseEntity.ok().build();
+        try {
+            returnDto.setSaleId(id); // Ensure consistency
+            service.processSaleReturn(returnDto);
+            logger.info("Processed sale return for saleId={}", id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            logger.error("Error processing sale return for saleId={}: {}", id, e.getMessage(), e);
+            throw new ApplicationException("Failed to process sale return", e);
+        }
     }
 
     @PostMapping("/{id}/cancel")
@@ -92,8 +147,14 @@ public class SaleController {
     public ResponseEntity<Void> cancelSale(
             @Parameter(description = "Sale ID") @PathVariable Long id, 
             @Parameter(description = "Reason for cancellation") @RequestParam String reason) {
-        service.cancelSale(id, reason);
-        return ResponseEntity.ok().build();
+        try {
+            service.cancelSale(id, reason);
+            logger.info("Cancelled sale with id={}", id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            logger.error("Error cancelling sale with id={}: {}", id, e.getMessage(), e);
+            throw new ApplicationException("Failed to cancel sale", e);
+        }
     }
 
     @GetMapping("/profit-report")
@@ -103,7 +164,14 @@ public class SaleController {
     public ResponseEntity<List<SalesProfitDto>> getSalesProfitReport(
             @Parameter(description = "Start date for profit report") @RequestParam LocalDateTime startDate,
             @Parameter(description = "End date for profit report") @RequestParam LocalDateTime endDate) {
-        return ResponseEntity.ok(service.getSalesProfitReport(startDate, endDate));
+        try {
+            var result = service.getSalesProfitReport(startDate, endDate);
+            logger.info("Fetched sales profit report from {} to {}", startDate, endDate);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Error fetching sales profit report from {} to {}: {}", startDate, endDate, e.getMessage(), e);
+            throw new ApplicationException("Failed to fetch sales profit report", e);
+        }
     }
 
 }

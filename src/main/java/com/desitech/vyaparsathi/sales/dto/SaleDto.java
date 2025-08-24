@@ -1,14 +1,12 @@
 package com.desitech.vyaparsathi.sales.dto;
 
 import com.desitech.vyaparsathi.common.util.CustomLocalDateTimeDeserializer;
-import com.desitech.vyaparsathi.payment.dto.PaymentDTO;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.desitech.vyaparsathi.payment.dto.PaymentDto;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,7 +24,7 @@ public class SaleDto {
     @Valid
     private List<SaleItemDto> items;
     @Valid
-    private List<PaymentDTO> paymentDetails;
+    private List<PaymentDto> paymentDetails;
 
     private BigDecimal roundOff;
     private BigDecimal totalAmount;

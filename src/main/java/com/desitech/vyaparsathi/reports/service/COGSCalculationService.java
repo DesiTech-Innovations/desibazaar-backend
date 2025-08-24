@@ -1,11 +1,14 @@
 package com.desitech.vyaparsathi.reports.service;
 
-import com.desitech.vyaparsathi.inventory.entity.PurchaseOrderItem;
-import com.desitech.vyaparsathi.inventory.repository.PurchaseOrderItemRepository;
+import com.desitech.vyaparsathi.purchaseorder.entity.PurchaseOrderItem;
+import com.desitech.vyaparsathi.purchaseorder.repository.PurchaseOrderItemRepository;
 import com.desitech.vyaparsathi.sales.entity.Sale;
 import com.desitech.vyaparsathi.sales.entity.SaleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,6 +20,8 @@ import java.util.List;
  */
 @Service
 public class COGSCalculationService {
+
+    private static final Logger logger = LoggerFactory.getLogger(COGSCalculationService.class);
 
     @Autowired
     private PurchaseOrderItemRepository purchaseOrderItemRepository;

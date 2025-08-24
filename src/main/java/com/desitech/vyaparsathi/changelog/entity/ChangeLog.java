@@ -1,4 +1,6 @@
+
 package com.desitech.vyaparsathi.changelog.entity;
+import com.desitech.vyaparsathi.changelog.model.ChangeLogOperation;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -21,8 +23,9 @@ public class ChangeLog {
     @Column(name = "entity_id", nullable = false)
     private Long entityId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String operation;
+    private ChangeLogOperation operation;
 
     @Lob
     @Column(name = "payload_json", columnDefinition = "TEXT")

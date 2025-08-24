@@ -1,9 +1,15 @@
 package com.desitech.vyaparsathi.sales.service;
 
+import com.desitech.vyaparsathi.common.exception.EntityNotFoundAppException;
+import com.desitech.vyaparsathi.common.exception.ValidationAppException;
+import com.desitech.vyaparsathi.payment.enums.PaymentSourceType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.desitech.vyaparsathi.customer.dto.CustomerLedgerDto;
 import com.desitech.vyaparsathi.customer.entity.CustomerLedgerType;
 import com.desitech.vyaparsathi.customer.service.CustomerLedgerService;
-import com.desitech.vyaparsathi.payment.dto.PaymentDTO;
+import com.desitech.vyaparsathi.payment.dto.PaymentDto;
 import com.desitech.vyaparsathi.payment.entity.Payment;
 import com.desitech.vyaparsathi.payment.enums.PaymentStatus;
 import com.desitech.vyaparsathi.payment.service.PaymentService;
@@ -24,8 +30,8 @@ import com.desitech.vyaparsathi.inventory.service.StockService;
 import com.desitech.vyaparsathi.shop.entity.Shop;
 import com.desitech.vyaparsathi.shop.repository.ShopRepository;
 import com.desitech.vyaparsathi.common.exception.InsufficientStockException;
-import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
-import com.desitech.vyaparsathi.catalog.repository.ItemVariantRepository;
+import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
+import com.desitech.vyaparsathi.inventory.repository.ItemVariantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -41,10 +47,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class SaleService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SaleService.class);
 
     @Autowired
     private SaleRepository saleRepository;
@@ -69,10 +78,10 @@ public class SaleService {
     private CustomerLedgerService ledgerService;
 
     @Transactional
-    public byte[] createSale(SaleDto dto) {
-        Shop shop = shopRepository.findById(1L).orElseThrow(() -> new RuntimeException("Shop not found"));
-        Optional<Customer> customerOpt = Optional.ofNullable(dto.getCustomerId()).flatMap(customerRepository::findById);
-        Customer customer = customerOpt.orElse(null);
+    public byte[] createSale(SaleDto dto) throws com.lowagie.text.BadElementException {
+    Shop shop = shopRepository.findById(1L).orElseThrow(() -> new EntityNotFoundAppException("Shop", 1L));
+    Optional<Customer> customerOpt = Optional.ofNullable(dto.getCustomerId()).flatMap(customerRepository::findById);
+    Customer customer = customerOpt.orElse(null);
 
         List<SaleItem> saleItems = new ArrayList<>();
         BigDecimal totalTaxableValue = BigDecimal.ZERO;
@@ -81,11 +90,12 @@ public class SaleService {
 
         for (SaleItemDto itemDto : dto.getItems()) {
             if (!stockService.isStockAvailable(itemDto.getItemVariantId(), itemDto.getQty())) {
+                logger.warn("Insufficient stock for item: {}", itemDto.getItemName());
                 throw new InsufficientStockException("Insufficient stock for item: " + itemDto.getItemName());
             }
 
             ItemVariant itemVariant = itemVariantRepository.findById(itemDto.getItemVariantId())
-                    .orElseThrow(() -> new RuntimeException("Item Variant not found for ID: " + itemDto.getItemVariantId()));
+                    .orElseThrow(() -> new EntityNotFoundAppException("Item Variant", itemDto.getItemVariantId()));
 
             // Calculate COGS for this item using FIFO
             BigDecimal itemCOGS = stockService.calculateCOGSFifo(itemDto.getItemVariantId(), itemDto.getQty());
@@ -181,34 +191,36 @@ public class SaleService {
 
         if (dto.getPaymentDetails() != null) {
             BigDecimal totalPaid = BigDecimal.ZERO;
-            for (PaymentDTO paymentDTO : dto.getPaymentDetails()) {
-                if (paymentDTO.getAmountPaid() == null) {
-                    throw new IllegalArgumentException("Payment amount cannot be null");
+            for (PaymentDto paymentDTO : dto.getPaymentDetails()) {
+                if (paymentDTO.getAmount() == null) {
+                    logger.error("Payment amount cannot be null for sale DTO: {}", dto);
+                    throw new ValidationAppException("Payment amount cannot be null");
                 }
-                Payment payment = new Payment();
-                payment.setSale(sale);
-                payment.setMethod(paymentDTO.getMethod());
-                payment.setAmountPaid(paymentDTO.getAmountPaid());
-                payment.setPaymentDate(LocalDateTime.now());
-                payment = paymentService.savePayment(payment); // Let PaymentService handle status
-                totalPaid = totalPaid.add(paymentDTO.getAmountPaid());
+                paymentDTO.setSourceId(sale.getId());
+                paymentDTO.setSourceType(PaymentSourceType.SALE);
+                paymentDTO.setCustomerId(customer != null ? customer.getId() : null);
+                paymentDTO.setPaymentDate(LocalDateTime.now());
+                //paymentDTO.setStatus(PaymentStatus.PAID);
+                PaymentDto savedPayment = paymentService.createPayment(paymentDTO);
+                totalPaid = totalPaid.add(paymentDTO.getAmount());
 
                 if (customer != null) {
                     CustomerLedgerDto ledgerDto = new CustomerLedgerDto();
-                    ledgerDto.setAmount(paymentDTO.getAmountPaid());
+                    ledgerDto.setAmount(paymentDTO.getAmount());
                     ledgerDto.setType(CustomerLedgerType.DEBIT); // Payment reduces debt
-                    ledgerDto.setDescription("Payment for Sale #" + invoiceNo + " (" + paymentDTO.getMethod() + ")");
+                    ledgerDto.setDescription("Payment for Sale #" + invoiceNo + " (" + paymentDTO.getPaymentMethod() + ")");
                     ledgerService.addEntry(customer.getId(), ledgerDto);
                 }
             }
 
             BigDecimal unpaidAmount = finalTotalAmount.subtract(totalPaid);
             if (unpaidAmount.compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("Total paid cannot exceed sale amount");
+                logger.error("Total paid ({}) exceeds sale amount ({})", totalPaid, finalTotalAmount);
+                throw new ValidationAppException("Total paid cannot exceed sale amount");
             }
         }
 
-        changeLogService.append("SALE", sale.getId(), "CREATE", sale, "LOCAL_DEVICE");
+    changeLogService.append("SALE", sale.getId(), com.desitech.vyaparsathi.changelog.model.ChangeLogOperation.CREATE, sale, "LOCAL_DEVICE");
 
         return invoiceService.generatePdf(sale);
     }
@@ -218,19 +230,20 @@ public class SaleService {
      */
     @Transactional
     public void processSaleReturn(SaleReturnDto returnDto) {
-        Sale sale = saleRepository.findById(returnDto.getSaleId())
-                .orElseThrow(() -> new RuntimeException("Sale not found"));
+    Sale sale = saleRepository.findById(returnDto.getSaleId())
+        .orElseThrow(() -> new EntityNotFoundAppException("Sale", returnDto.getSaleId()));
 
         BigDecimal totalReturnAmount = BigDecimal.ZERO;
 
         for (SaleReturnDto.SaleReturnItemDto returnItem : returnDto.getReturnItems()) {
-            SaleItem saleItem = sale.getSaleItems().stream()
-                    .filter(si -> si.getId().equals(returnItem.getSaleItemId()))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Sale item not found"));
+        SaleItem saleItem = sale.getSaleItems().stream()
+            .filter(si -> si.getId().equals(returnItem.getSaleItemId()))
+            .findFirst()
+            .orElseThrow(() -> new EntityNotFoundAppException("Sale item", returnItem.getSaleItemId()));
 
             if (returnItem.getReturnQuantity().compareTo(saleItem.getQty()) > 0) {
-                throw new IllegalArgumentException("Return quantity cannot exceed original quantity");
+                logger.error("Return quantity ({}) exceeds original quantity ({}) for sale item {}", returnItem.getReturnQuantity(), saleItem.getQty(), saleItem.getId());
+                throw new ValidationAppException("Return quantity cannot exceed original quantity");
             }
 
             // Calculate return amount (proportional to original)
@@ -249,8 +262,9 @@ public class SaleService {
         }
 
         // Update sale total amount
-        sale.setTotalAmount(sale.getTotalAmount().subtract(totalReturnAmount));
-        sale.setCogs(sale.getCogs().subtract(calculateReturnCOGS(returnDto)));
+    sale.setTotalAmount(sale.getTotalAmount().subtract(totalReturnAmount));
+    sale.setCogs(sale.getCogs().subtract(calculateReturnCOGS(returnDto)));
+    logger.info("Processed sale return for sale ID {}: return amount {}", sale.getId(), totalReturnAmount);
         
         saleRepository.save(sale);
 
@@ -265,7 +279,7 @@ public class SaleService {
         }
 
         // Log the return
-        changeLogService.append("SALE_RETURN", sale.getId(), "RETURN", returnDto, "LOCAL_DEVICE");
+    changeLogService.append("SALE_RETURN", sale.getId(), com.desitech.vyaparsathi.changelog.model.ChangeLogOperation.RETURN, returnDto, "LOCAL_DEVICE");
     }
 
     /**
@@ -273,8 +287,8 @@ public class SaleService {
      */
     @Transactional
     public void cancelSale(Long saleId, String reason) {
-        Sale sale = saleRepository.findById(saleId)
-                .orElseThrow(() -> new RuntimeException("Sale not found"));
+    Sale sale = saleRepository.findById(saleId)
+        .orElseThrow(() -> new EntityNotFoundAppException("Sale", saleId));
 
         // Restore stock for all items
         for (SaleItem saleItem : sale.getSaleItems()) {
@@ -295,24 +309,26 @@ public class SaleService {
             ledgerService.addEntry(sale.getCustomer().getId(), reverseDto);
 
             // Reverse any payment entries
-            for (Payment payment : sale.getPayments()) {
+            List<PaymentDto> payments = paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId());
+            for (PaymentDto payment : payments) {
                 CustomerLedgerDto paymentReverseDto = new CustomerLedgerDto();
-                paymentReverseDto.setAmount(payment.getAmountPaid());
+                paymentReverseDto.setAmount(payment.getAmount());
                 paymentReverseDto.setType(CustomerLedgerType.CREDIT); // Reverse the debit
                 paymentReverseDto.setDescription("Cancelled Payment for Sale #" + sale.getInvoiceNo() + 
-                                               " (" + payment.getMethod() + ")");
+                                               " (" + payment.getPaymentMethod() + ")");
                 ledgerService.addEntry(sale.getCustomer().getId(), paymentReverseDto);
             }
         }
 
         // Mark sale as cancelled (you might want to add a status field to Sale entity)
-        sale.setTotalAmount(BigDecimal.ZERO);
-        sale.setCogs(BigDecimal.ZERO);
-        saleRepository.save(sale);
+    sale.setTotalAmount(BigDecimal.ZERO);
+    sale.setCogs(BigDecimal.ZERO);
+    saleRepository.save(sale);
+    logger.info("Cancelled sale with ID {}", saleId);
 
         // Log the cancellation
-        changeLogService.append("SALE_CANCEL", sale.getId(), "CANCEL", 
-                               java.util.Map.of("reason", reason), "LOCAL_DEVICE");
+    changeLogService.append("SALE_CANCEL", sale.getId(), com.desitech.vyaparsathi.changelog.model.ChangeLogOperation.CANCEL, 
+                   java.util.Map.of("reason", reason), "LOCAL_DEVICE");
     }
 
     /**
@@ -343,14 +359,14 @@ public class SaleService {
     private BigDecimal calculateReturnCOGS(SaleReturnDto returnDto) {
         BigDecimal totalReturnCOGS = BigDecimal.ZERO;
         
-        Sale sale = saleRepository.findById(returnDto.getSaleId())
-                .orElseThrow(() -> new RuntimeException("Sale not found"));
+    Sale sale = saleRepository.findById(returnDto.getSaleId())
+        .orElseThrow(() -> new EntityNotFoundAppException("Sale", returnDto.getSaleId()));
 
         for (SaleReturnDto.SaleReturnItemDto returnItem : returnDto.getReturnItems()) {
-            SaleItem saleItem = sale.getSaleItems().stream()
-                    .filter(si -> si.getId().equals(returnItem.getSaleItemId()))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Sale item not found"));
+        SaleItem saleItem = sale.getSaleItems().stream()
+            .filter(si -> si.getId().equals(returnItem.getSaleItemId()))
+            .findFirst()
+            .orElseThrow(() -> new EntityNotFoundAppException("Sale item", returnItem.getSaleItemId()));
 
             BigDecimal returnCOGS = saleItem.getCostPerUnit().multiply(returnItem.getReturnQuantity());
             totalReturnCOGS = totalReturnCOGS.add(returnCOGS);
@@ -360,7 +376,7 @@ public class SaleService {
     }
 
     public Optional<SaleDto> getSaleById(Long id) {
-        return saleRepository.findById(id).map(mapper::toDto);
+    return saleRepository.findById(id).map(mapper::toDto);
     }
 
     public List<SaleDto> listSales(LocalDateTime startDate, LocalDateTime endDate) {
@@ -370,14 +386,15 @@ public class SaleService {
         if (endDate == null) {
             endDate = LocalDateTime.now();
         }
-        List<Sale> sales = saleRepository.findByDateBetween(startDate, endDate);
-        return mapper.toDtoList(sales);
+    List<Sale> sales = saleRepository.findByDateBetween(startDate, endDate);
+    logger.info("Fetched {} sales between {} and {}", sales.size(), startDate, endDate);
+    return mapper.toDtoList(sales);
     }
 
-    private PaymentStatus determinePaymentStatus(BigDecimal totalAmount, List<PaymentDTO> payments) {
-        BigDecimal totalPaid = payments.stream()
-                .map(PaymentDTO::getAmountPaid)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    private PaymentStatus determinePaymentStatus(BigDecimal totalAmount, List<PaymentDto> payments) {
+    BigDecimal totalPaid = payments.stream()
+        .map(PaymentDto::getAmount)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
         if (totalPaid.compareTo(totalAmount) >= 0) return PaymentStatus.PAID;
         if (totalPaid.compareTo(BigDecimal.ZERO) > 0) return PaymentStatus.PARTIALLY_PAID;
         return PaymentStatus.PENDING;
@@ -385,31 +402,30 @@ public class SaleService {
 
     public List<SaleDueDto> getSalesWithDue() {
         List<Sale> sales = saleRepository.findAll(); // Custom query with join fetch
-        return sales.stream()
-                .map(sale -> {
-                    BigDecimal totalAmount = sale.getTotalAmount();
-                    List<Payment> payments = sale.getPayments(); // Eager-loaded
-                    BigDecimal paidAmount = payments.stream()
-                            .map(Payment::getAmountPaid)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    BigDecimal dueAmount = paymentService.calculateDueAmount(sale.getId(), totalAmount);
-                    return new SaleDueDto(
-                            sale.getId(),
-                            sale.getInvoiceNo(),
-                            dueAmount,
-                            sale.getCustomer().getId(),
-                            sale.getDate(),
-                            sale.getTotalAmount(),
-                            paidAmount,
-                            sale.getCustomer().getName(),
-                            sale.getCustomer().getAddressLine1(),
-                            sale.getCustomer().getCity(),
-                            sale.getCustomer().getState(),
-                            sale.getCustomer().getPostalCode()
-
-                    );
-                })
-                .collect(Collectors.toList());
+    return sales.stream()
+        .map(sale -> {
+            BigDecimal totalAmount = sale.getTotalAmount();
+            List<PaymentDto> payments = paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId());
+            BigDecimal paidAmount = payments.stream()
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal dueAmount = paymentService.calculateDueAmount(sale.getId(), PaymentSourceType.SALE, totalAmount);
+            return new SaleDueDto(
+                sale.getId(),
+                sale.getInvoiceNo(),
+                dueAmount,
+                sale.getCustomer().getId(),
+                sale.getDate(),
+                sale.getTotalAmount(),
+                paidAmount,
+                sale.getCustomer().getName(),
+                sale.getCustomer().getAddressLine1(),
+                sale.getCustomer().getCity(),
+                sale.getCustomer().getState(),
+                sale.getCustomer().getPostalCode()
+            );
+        })
+        .collect(Collectors.toList());
     }
 
     public SaleDueDto getSaleDueBySaleId(Long saleId) {
@@ -418,39 +434,40 @@ public class SaleService {
                     SaleDueDto dto = new SaleDueDto();
                     dto.setSaleId(sale.getId());
                     dto.setInvoiceNo(sale.getInvoiceNo());
-                    dto.setDueAmount(paymentService.calculateDueAmount(sale.getId(), sale.getTotalAmount()));
+                    BigDecimal dueAmount = paymentService.calculateDueAmount(sale.getId(), PaymentSourceType.SALE, sale.getTotalAmount());
+                    dto.setDueAmount(dueAmount);
                     return dto;
                 })
-                .orElseThrow(() -> new RuntimeException("Sale not found with ID: " + saleId));
+                .orElseThrow(() -> new EntityNotFoundAppException("Sale", saleId));
     }
 
     public Page<SaleDueDto> getDuesByCustomerId(Long customerId, Pageable pageable) {
         Page<Sale> sales = saleRepository.findByCustomerId(customerId, pageable);
-        List<SaleDueDto> filtered = sales.stream()
-                .map(sale -> {
-                    BigDecimal totalAmount = sale.getTotalAmount();
-                    List<Payment> payments = sale.getPayments(); // Should be eager-loaded now
-                    BigDecimal paidAmount = payments.stream()
-                            .map(Payment::getAmountPaid)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    BigDecimal dueAmount = paymentService.calculateDueAmount(sale.getId(), totalAmount);
-                    return new SaleDueDto(
-                            sale.getId(),
-                            sale.getInvoiceNo(),
-                            dueAmount,
-                            sale.getCustomer().getId(),
-                            sale.getDate(),
-                            totalAmount,
-                            paidAmount,
-                            sale.getCustomer().getName(),
-                            sale.getCustomer().getAddressLine1(),
-                            sale.getCustomer().getCity(),
-                            sale.getCustomer().getState(),
-                            sale.getCustomer().getPostalCode()
-                    );
-                })
-                .filter(dto -> dto.getDueAmount().compareTo(BigDecimal.ZERO) > 0) // Only include dues > 0
-                .toList();
+    List<SaleDueDto> filtered = sales.stream()
+        .map(sale -> {
+            BigDecimal totalAmount = sale.getTotalAmount();
+            List<PaymentDto> payments = paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId());
+            BigDecimal paidAmount = payments.stream()
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal dueAmount = paymentService.calculateDueAmount(sale.getId(), PaymentSourceType.SALE, totalAmount);
+            return new SaleDueDto(
+                sale.getId(),
+                sale.getInvoiceNo(),
+                dueAmount,
+                sale.getCustomer().getId(),
+                sale.getDate(),
+                totalAmount,
+                paidAmount,
+                sale.getCustomer().getName(),
+                sale.getCustomer().getAddressLine1(),
+                sale.getCustomer().getCity(),
+                sale.getCustomer().getState(),
+                sale.getCustomer().getPostalCode()
+            );
+        })
+        .filter(dto -> dto.getDueAmount().compareTo(BigDecimal.ZERO) > 0) // Only include dues > 0
+        .toList();
 
         return new PageImpl<>(filtered, pageable, sales.getTotalElements());
     }

@@ -35,18 +35,7 @@ public class CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        customer.setName(dto.getName());
-        customer.setPhone(dto.getPhone());
-        customer.setEmail(dto.getEmail());
-        customer.setAddressLine1(dto.getAddressLine1());
-        customer.setAddressLine2(dto.getAddressLine2());
-        customer.setCity(dto.getCity());
-        customer.setState(dto.getState());
-        customer.setPostalCode(dto.getPostalCode());
-        customer.setCountry(dto.getCountry());
-        customer.setGstNumber(dto.getGstNumber());
-        customer.setPanNumber(dto.getPanNumber());
-        customer.setNotes(dto.getNotes());
+    mapper.updateEntityFromDto(dto, customer);
 
         customerRepository.save(customer);
         return mapper.toDto(customer);

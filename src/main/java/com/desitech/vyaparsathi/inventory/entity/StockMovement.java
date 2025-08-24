@@ -1,6 +1,6 @@
 package com.desitech.vyaparsathi.inventory.entity;
 
-import com.desitech.vyaparsathi.catalog.entity.ItemVariant;
+import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
 import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import jakarta.persistence.*;
 import lombok.Data;

@@ -1,5 +1,8 @@
 package com.desitech.vyaparsathi.reports.controller;
 
+import com.desitech.vyaparsathi.common.exception.ApplicationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.desitech.vyaparsathi.reports.dto.*;
 import com.desitech.vyaparsathi.reports.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +26,7 @@ import java.util.List;
 @Tag(name = "Financial Reports", description = "Business reporting with corrected financial logic. Net revenue = sales - returns/discounts, Net profit = net revenue - COGS - operational expenses (excludes inventory purchases).")
 public class ReportController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReportController.class);
     @Autowired
     private ReportService service;
 
@@ -32,7 +36,14 @@ public class ReportController {
     public ResponseEntity<DailyReportDto> getDailyReport(
             @Parameter(description = "Report date in YYYY-MM-DD format", example = "2024-01-15")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(service.getDailyReport(date));
+                try {
+                        var result = service.getDailyReport(date);
+                        logger.info("Fetched daily report for date {}", date);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching daily report for date {}: {}", date, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch daily report", e);
+                }
     }
 
     @GetMapping("/sales-summary")
@@ -54,7 +65,14 @@ public class ReportController {
                 ? null
                 : LocalDate.parse(to);
 
-        return ResponseEntity.ok(service.getSalesSummary(fromDate, toDate));
+                try {
+                        var result = service.getSalesSummary(fromDate, toDate);
+                        logger.info("Fetched sales summary from {} to {}", fromDate, toDate);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching sales summary from {} to {}: {}", fromDate, toDate, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch sales summary", e);
+                }
     }
 
     @GetMapping("/gst-summary")
@@ -64,7 +82,14 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @Parameter(description = "End date in YYYY-MM-DD format", example = "2024-01-31")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(service.getGstSummary(from, to));
+                try {
+                        var result = service.getGstSummary(from, to);
+                        logger.info("Fetched GST summary from {} to {}", from, to);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching GST summary from {} to {}: {}", from, to, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch GST summary", e);
+                }
     }
 
     @GetMapping("/gst-breakdown")
@@ -74,7 +99,14 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @Parameter(description = "End date in YYYY-MM-DD format", example = "2024-01-31")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(service.getGstSummaryByRate(from, to));
+                try {
+                        var result = service.getGstSummaryByRate(from, to);
+                        logger.info("Fetched GST breakdown by rate from {} to {}", from, to);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching GST breakdown by rate from {} to {}: {}", from, to, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch GST breakdown by rate", e);
+                }
     }
 
     @GetMapping("/items-sold")
@@ -91,7 +123,14 @@ public class ReportController {
                 ? null
                 : LocalDate.parse(to);
 
-        return ResponseEntity.ok(service.getAllItemsSold(fromDate, toDate));
+                try {
+                        var result = service.getAllItemsSold(fromDate, toDate);
+                        logger.info("Fetched all items sold from {} to {}", fromDate, toDate);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching all items sold from {} to {}: {}", fromDate, toDate, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch all items sold", e);
+                }
     }
 
     @GetMapping("/category-sales")
@@ -108,7 +147,14 @@ public class ReportController {
                 ? null
                 : LocalDate.parse(to);
 
-        return ResponseEntity.ok(service.getCategorySales(fromDate, toDate));
+                try {
+                        var result = service.getCategorySales(fromDate, toDate);
+                        logger.info("Fetched category sales from {} to {}", fromDate, toDate);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching category sales from {} to {}: {}", fromDate, toDate, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch category sales", e);
+                }
     }
 
     @GetMapping("/customer-sales")
@@ -125,7 +171,14 @@ public class ReportController {
                 ? null
                 : LocalDate.parse(to);
 
-        return ResponseEntity.ok(service.getCustomerSales(fromDate, toDate));
+                try {
+                        var result = service.getCustomerSales(fromDate, toDate);
+                        logger.info("Fetched customer sales from {} to {}", fromDate, toDate);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching customer sales from {} to {}: {}", fromDate, toDate, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch customer sales", e);
+                }
     }
 
     @GetMapping("/expenses-summary")
@@ -142,7 +195,14 @@ public class ReportController {
                 ? null
                 : LocalDate.parse(to);
 
-        return ResponseEntity.ok(service.getExpensesSummary(fromDate, toDate));
+                try {
+                        var result = service.getExpensesSummary(fromDate, toDate);
+                        logger.info("Fetched expenses summary from {} to {}", fromDate, toDate);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching expenses summary from {} to {}: {}", fromDate, toDate, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch expenses summary", e);
+                }
     }
 
     @GetMapping("/payments-summary")
@@ -159,6 +219,13 @@ public class ReportController {
                 ? null
                 : LocalDate.parse(to);
 
-        return ResponseEntity.ok(service.getPaymentsSummary(fromDate, toDate));
+                try {
+                        var result = service.getPaymentsSummary(fromDate, toDate);
+                        logger.info("Fetched payments summary from {} to {}", fromDate, toDate);
+                        return ResponseEntity.ok(result);
+                } catch (Exception e) {
+                        logger.error("Error fetching payments summary from {} to {}: {}", fromDate, toDate, e.getMessage(), e);
+                        throw new ApplicationException("Failed to fetch payments summary", e);
+                }
     }
 }

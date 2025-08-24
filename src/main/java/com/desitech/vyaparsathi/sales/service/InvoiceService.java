@@ -1,5 +1,12 @@
 package com.desitech.vyaparsathi.sales.service;
 
+import com.desitech.vyaparsathi.common.exception.ExportAppException;
+import com.desitech.vyaparsathi.payment.enums.PaymentSourceType;
+import com.lowagie.text.Font;
+import com.lowagie.text.pdf.PdfPTable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.desitech.vyaparsathi.payment.entity.Payment;
 import com.desitech.vyaparsathi.payment.service.PaymentService;
 import com.desitech.vyaparsathi.sales.entity.Sale;
@@ -9,6 +16,9 @@ import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.desitech.vyaparsathi.sales.repository.SaleRepository;
+
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -16,8 +26,12 @@ import java.math.BigDecimal;
 @Service
 public class InvoiceService {
 
+    private static final Logger logger = LoggerFactory.getLogger(InvoiceService.class);
     @Autowired
     private PaymentService paymentService; // To fetch payment details
+
+    @Autowired
+    private SaleRepository saleRepository;
 
     public byte[] generatePdf(Sale sale) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -26,7 +40,8 @@ public class InvoiceService {
             document.open();
 
             // Title
-            Paragraph title = new Paragraph("GST Invoice", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20, Font.BOLD));
+            Paragraph title = new Paragraph("GST Invoice",
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20, Font.BOLD));
             title.setAlignment(Element.ALIGN_CENTER);
             document.add(title);
             document.add(Chunk.NEWLINE);
@@ -42,7 +57,6 @@ public class InvoiceService {
             document.add(new Paragraph("Recipient Details:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
             document.add(new Paragraph("Name: " + sale.getCustomer().getName()));
             document.add(new Paragraph("Address: " + sale.getCustomer().getAddressLine1()));
-
             if (sale.getCustomer().getGstNumber() != null && !sale.getCustomer().getGstNumber().isEmpty()) {
                 document.add(new Paragraph("GSTIN/UIN: " + sale.getCustomer().getGstNumber()));
             }
@@ -59,6 +73,7 @@ public class InvoiceService {
             itemTable.setPadding(5);
             itemTable.setSpacing(0);
 
+            // headers
             itemTable.addCell(getHeaderCell("Item"));
             itemTable.addCell(getHeaderCell("HSN Code"));
             itemTable.addCell(getHeaderCell("Qty"));
@@ -90,10 +105,11 @@ public class InvoiceService {
 
             // Payment Details
             if (sale.getId() != null) {
-                BigDecimal totalPaid = paymentService.getPaymentsBySaleId(sale.getId()).stream()
-                        .map(Payment::getAmountPaid)
+                var payments = paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId());
+                BigDecimal totalPaid = payments.stream()
+                        .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
-                BigDecimal dueAmount = paymentService.calculateDueAmount(sale.getId(), sale.getTotalAmount());
+                BigDecimal dueAmount = sale.getTotalAmount().subtract(totalPaid);
 
                 document.add(new Paragraph("Payment Details:", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
                 Table paymentTable = new Table(3);
@@ -101,14 +117,15 @@ public class InvoiceService {
                 paymentTable.setPadding(5);
                 paymentTable.setSpacing(0);
 
+                // headers
                 paymentTable.addCell(getHeaderCell("Method"));
                 paymentTable.addCell(getHeaderCell("Amount"));
                 paymentTable.addCell(getHeaderCell("Date"));
 
-                paymentService.getPaymentsBySaleId(sale.getId()).forEach(payment -> {
-                    paymentTable.addCell(payment.getMethod().name());
-                    paymentTable.addCell(payment.getAmountPaid().toString());
-                    paymentTable.addCell(payment.getPaymentDate().toString());
+                payments.forEach(payment -> {
+                    safeAddCell(paymentTable, payment.getPaymentMethod());
+                    safeAddCell(paymentTable, payment.getAmount());
+                    safeAddCell(paymentTable, payment.getPaymentDate());
                 });
 
                 document.add(paymentTable);
@@ -127,16 +144,54 @@ public class InvoiceService {
 
             document.close();
             return baos.toByteArray();
-        } catch (DocumentException | IOException e) {
-            throw new RuntimeException("PDF generation failed", e);
+
+        } catch (DocumentException | IOException | ExportAppException e) {
+            logger.error("PDF generation failed for sale {}", sale != null ? sale.getId() : null, e);
+            throw new ExportAppException("PDF generation failed", e);
         }
     }
 
-    private Cell getHeaderCell(String text) throws BadElementException {
-        Cell cell = new Cell(new Phrase(text, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Font.BOLD)));
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        cell.setBackgroundColor(new java.awt.Color(200, 200, 200));
-        return cell;
+    /**
+     * Find Sale by saleId or invoiceNo and generate PDF. Throws if not found or neither param provided.
+     */
+    public byte[] generatePdfBySaleIdOrInvoiceNo(Long saleId, String invoiceNo) {
+        Sale sale = null;
+        if (saleId != null) {
+            sale = saleRepository.findById(saleId).orElseThrow(() -> new RuntimeException("Sale not found"));
+        } else if (invoiceNo != null) {
+            sale = saleRepository.findByInvoiceNo(invoiceNo);
+            if (sale == null) throw new RuntimeException("Sale not found for invoiceNo");
+        } else {
+            throw new IllegalArgumentException("saleId or invoiceNo required");
+        }
+        return generatePdf(sale);
     }
+
+    private Cell getHeaderCell(String text) {
+        try {
+            Font font = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Font.BOLD);
+            Cell cell = new Cell(new Phrase(text, font));
+            cell.setHeader(true);
+            cell.setBackgroundColor(Color.LIGHT_GRAY);
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            return cell;
+        } catch (Exception e) {
+            logger.warn("Failed to create styled header cell for '{}'. Using fallback.", text, e);
+            // Fallback plain cell (ensures PDF doesn't fail)
+            return new Cell(text);
+        }
+    }
+
+    private void safeAddCell(Table table, Object value) {
+        String text = (value != null) ? value.toString() : "N/A";
+        try {
+            Cell cell = new Cell(new Phrase(text, FontFactory.getFont(FontFactory.HELVETICA, 9)));
+            cell.setVerticalAlignment(Cell.ALIGN_MIDDLE);
+            table.addCell(cell);
+        } catch (BadElementException e) {
+            throw new RuntimeException("Failed to add cell to table", e);
+        }
+    }
+
 }
