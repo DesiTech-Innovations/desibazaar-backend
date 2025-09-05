@@ -30,16 +30,12 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
-        try {
-            User user = authService.getUserByUsername(request.getUsername());
-            String token = authService.authenticateAndGenerateToken(user, request.getPin());
-            String refreshToken = authService.createRefreshToken(user.getUsername());
-            logger.info("User login successful: {}", request.getUsername());
-            return ResponseEntity.ok(new AuthResponse(token, refreshToken, user.getRole().name()));
-        } catch (Exception e) {
-            logger.error("Login failed for user {}: {}", request.getUsername(), e.getMessage(), e);
-            throw new ApplicationException("Login failed", e);
-        }
+        User user = authService.getUserByUsername(request.getUsername());
+        String token = authService.authenticateAndGenerateToken(user, request.getPin());
+        String refreshToken = authService.createRefreshToken(user.getUsername());
+
+        logger.info("User login successful: {}", request.getUsername());
+        return ResponseEntity.ok(new AuthResponse(token, refreshToken, user.getRole().name()));
     }
 
     @PostMapping("/register")

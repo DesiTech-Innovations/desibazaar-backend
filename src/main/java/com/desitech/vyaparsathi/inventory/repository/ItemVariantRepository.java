@@ -12,36 +12,40 @@ import java.util.Optional;
 @Repository
 public interface ItemVariantRepository extends JpaRepository<ItemVariant, Long> {
 
-    /**
-     * Finds an ItemVariant by its unique SKU.
-     * @param sku The SKU to search for.
-     * @return An Optional containing the ItemVariant if found, or an empty Optional otherwise.
-     */
     Optional<ItemVariant> findBySku(String sku);
 
-    /**
-     * Returns true if any ItemVariant exists with the given HSN code.
-     */
     boolean existsByHsn(String hsn);
 
     /**
-     * Searches for ItemVariants based on item name, category, color, size, and design.
-     * Joins with the Item entity to access name and category.
-     * @param name The item name to filter by (nullable).
-     * @param category The category to filter by (nullable).
-     * @param color The color to filter by (nullable).
-     * @param size The size to filter by (nullable).
-     * @param design The design to filter by (nullable).
-     * @param sku The SKU to filter by (nullable).
-     * @return A list of matching ItemVariants.
+     * Searches for ItemVariants based on a combination of item and variant attributes.
+     * This query is designed to power the main item search/filter functionality.
      */
-    @Query("SELECT iv FROM ItemVariant iv JOIN iv.item i WHERE (:name IS NULL OR i.name LIKE %:name%) AND (:category IS NULL OR i.category LIKE %:category%) AND (:color IS NULL OR iv.color LIKE %:color%) AND (:size IS NULL OR iv.size LIKE %:size%) AND (:design IS NULL OR iv.design LIKE %:design%) AND (:sku IS NULL OR iv.sku LIKE %:sku%)")
+    @Query("SELECT iv FROM ItemVariant iv JOIN iv.item i LEFT JOIN i.category c WHERE " +
+            "(:name IS NULL OR i.name LIKE %:name%) AND " +
+            "(:categoryName IS NULL OR c.name LIKE %:categoryName%) AND " +
+            "(:color IS NULL OR iv.color LIKE %:color%) AND " +
+            "(:size IS NULL OR iv.size LIKE %:size%) AND " +
+            "(:design IS NULL OR iv.design LIKE %:design%) AND " +
+            "(:sku IS NULL OR iv.sku LIKE %:sku%) AND " +
+            "(:fabric IS NULL OR i.fabric LIKE %:fabric%) AND " +
+            "(:season IS NULL OR i.season LIKE %:season%) AND " +
+            "(:fit IS NULL OR iv.fit LIKE %:fit%)")
     List<ItemVariant> searchVariants(
             @Param("name") String name,
-            @Param("category") String category,
+            @Param("categoryName") String categoryName,
             @Param("color") String color,
             @Param("size") String size,
             @Param("design") String design,
-            @Param("sku") String sku
+            @Param("sku") String sku,
+            @Param("fabric") String fabric,
+            @Param("season") String season,
+            @Param("fit") String fit
     );
+
+    /**
+     * NEW: Finds all variants that have a low stock threshold configured.
+     * This is used by the LowStockAlerts feature.
+     */
+    List<ItemVariant> findAllByLowStockThresholdIsNotNull();
+
 }

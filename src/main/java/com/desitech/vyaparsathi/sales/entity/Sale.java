@@ -3,6 +3,7 @@ package com.desitech.vyaparsathi.sales.entity;
 import com.desitech.vyaparsathi.common.util.LocalDateTimeAttributeConverter;
 import com.desitech.vyaparsathi.customer.entity.Customer;
 import com.desitech.vyaparsathi.payment.entity.Payment;
+import com.desitech.vyaparsathi.payment.enums.PaymentStatus;
 import com.desitech.vyaparsathi.shop.entity.Shop;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -20,8 +21,8 @@ import java.util.Set;
 @Entity
 @Data
 @NoArgsConstructor
-@ToString(exclude = {"payments", "saleItems", "customer", "shop"})
-@EqualsAndHashCode(exclude = {"payments", "saleItems"})
+@ToString(exclude = {"saleItems", "customer", "shop"})
+@EqualsAndHashCode(exclude = {"saleItems"})
 public class Sale {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,20 +46,17 @@ public class Sale {
     @Column(nullable = false)
     private BigDecimal totalAmount;
 
-    @Column(name = "cogs", nullable = false)
-    private BigDecimal cogs = BigDecimal.ZERO;
-
     private BigDecimal roundOff;
-
-    @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private Set<Payment> payments;
 
     private boolean syncedFlag;
 
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<SaleItem> saleItems = new ArrayList<>();
+
+    @Column(name = "payment_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     @PrePersist
     @Convert(converter = LocalDateTimeAttributeConverter.class)

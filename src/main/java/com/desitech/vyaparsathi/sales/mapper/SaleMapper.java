@@ -10,6 +10,7 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface SaleMapper {
     @Mapping(target = "items", source = "saleItems")
+    @Mapping(target = "customerName", source = "customer.name")
     SaleDto toDto(Sale sale);
 
     @Mapping(target = "saleItems", source = "items")

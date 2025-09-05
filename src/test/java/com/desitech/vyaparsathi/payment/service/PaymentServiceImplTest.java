@@ -71,7 +71,7 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(saleRepository.findById(1L)).thenReturn(Optional.of(sale));
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 1L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 1L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 
@@ -102,7 +102,7 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(saleRepository.findById(2L)).thenReturn(Optional.of(sale));
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 2L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 2L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 
@@ -132,7 +132,7 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(saleRepository.findById(3L)).thenReturn(Optional.of(sale));
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 3L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 3L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 
@@ -162,7 +162,7 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(saleRepository.findById(4L)).thenReturn(Optional.of(sale));
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 4L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 4L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 
@@ -192,14 +192,14 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(purchaseOrderRepository.findById(5L)).thenReturn(Optional.of(po));
-        when(paymentRepository.findBySourceTypeAndSourceId("PURCHASE_ORDER", 5L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.PURCHASE_ORDER, 5L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 
         PaymentDto result = paymentService.createPayment(dto);
 
         verify(paymentRepository).save(paymentCaptor.capture());
-        assertThat(paymentCaptor.getValue().getStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(paymentCaptor.getValue().getStatus()).isEqualTo(PaymentStatus.PARTIALLY_PAID);
     }
 
     @Test
@@ -222,7 +222,7 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(saleRepository.findById(6L)).thenReturn(Optional.of(sale));
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 6L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 6L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 
@@ -314,7 +314,7 @@ class PaymentServiceImplTest {
         sale.setId(10L);
         sale.setTotalAmount(new BigDecimal("1000"));
 
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 10L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 10L)).thenReturn(Collections.emptyList());
         when(saleRepository.findById(10L)).thenReturn(Optional.of(sale));
 
         assertThatThrownBy(() -> paymentService.recordDuePayment(req))
@@ -334,7 +334,7 @@ class PaymentServiceImplTest {
         sale.setId(11L);
         sale.setTotalAmount(new BigDecimal("1000"));
 
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 11L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 11L)).thenReturn(Collections.emptyList());
         when(saleRepository.findById(11L)).thenReturn(Optional.of(sale));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -356,7 +356,7 @@ class PaymentServiceImplTest {
                 paymentWithAmount(new BigDecimal("600")),
                 paymentWithAmount(new BigDecimal("700"))
         );
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 88L)).thenReturn(payments);
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 88L)).thenReturn(payments);
 
         BigDecimal due = paymentService.calculateDueAmount(88L, PaymentSourceType.SALE, new BigDecimal("1000"));
         assertThat(due).isEqualTo(BigDecimal.ZERO);
@@ -368,7 +368,7 @@ class PaymentServiceImplTest {
                 paymentWithAmount(new BigDecimal("200")),
                 paymentWithAmount(new BigDecimal("300"))
         );
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 77L)).thenReturn(payments);
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 77L)).thenReturn(payments);
 
         BigDecimal due = paymentService.calculateDueAmount(77L, PaymentSourceType.SALE, new BigDecimal("1000"));
         assertThat(due).isEqualTo(new BigDecimal("500"));
@@ -415,7 +415,7 @@ class PaymentServiceImplTest {
     @Test
     void getPaymentsBySource_mapsToDto() {
         Payment payment = paymentWithAmount(new BigDecimal("123"));
-        when(paymentRepository.findBySourceTypeAndSourceId("SALE", 5L)).thenReturn(Arrays.asList(payment));
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 5L)).thenReturn(Arrays.asList(payment));
         PaymentDto dto = new PaymentDto();
         when(paymentMapper.toDto(payment)).thenReturn(dto);
 
@@ -493,7 +493,7 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(saleRepository.findById(1L)).thenReturn(Optional.of(sale));
-        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE.name(), 1L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.SALE, 1L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 
@@ -528,7 +528,7 @@ class PaymentServiceImplTest {
 
         when(paymentMapper.toEntity(any(PaymentDto.class))).thenReturn(payment);
         when(purchaseOrderRepository.findById(2L)).thenReturn(Optional.of(po));
-        when(paymentRepository.findBySourceTypeAndSourceId("PURCHASE_ORDER", 2L)).thenReturn(Collections.emptyList());
+        when(paymentRepository.findBySourceTypeAndSourceId(PaymentSourceType.PURCHASE_ORDER, 2L)).thenReturn(Collections.emptyList());
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentMapper.toDto(any(Payment.class))).thenReturn(dto);
 

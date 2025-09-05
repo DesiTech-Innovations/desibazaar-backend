@@ -49,6 +49,9 @@ public class ItemVariant {
     @Column
     private String design;
 
+    @Column
+    private String fit;
+
     @Column(name = "low_stock_threshold")
     private BigDecimal lowStockThreshold; // Threshold for low stock alerts
 }

@@ -6,6 +6,7 @@ import com.desitech.vyaparsathi.auth.entity.User;
 import com.desitech.vyaparsathi.auth.entity.RefreshToken;
 import com.desitech.vyaparsathi.auth.repository.UserRepository;
 import com.desitech.vyaparsathi.auth.security.JwtUtil;
+import com.desitech.vyaparsathi.common.exception.ApplicationException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -87,6 +88,6 @@ public class AuthService {
 
     public User getUserByUsername(String username){
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new ApplicationException("User not found"));
     }
 }

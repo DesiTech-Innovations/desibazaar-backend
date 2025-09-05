@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,6 +19,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/catalog")
@@ -53,22 +56,27 @@ public class ItemController {
     }
 
     @PostMapping(consumes = { "multipart/form-data" })
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     public ResponseEntity<ItemDto> createItem(
             @Valid @RequestPart("itemDto") ItemDto itemDto,
-            @RequestPart(value = "photos", required = false) MultipartFile[] photos) {
-
+            @RequestParam(required = false) Map<String, MultipartFile> photos) {
         try {
-            // If photos are provided, validate count and assign paths
-            if (photos != null && photos.length > 0) {
-                if (photos.length != itemDto.getVariants().size()) {
-                    logger.warn("Photo count does not match variant count: photos={}, variants={}", photos.length, itemDto.getVariants().size());
-                    throw new ApplicationException("Number of photos must match number of variants.");
+            if (photos != null && !photos.isEmpty()) {
+                for (Map.Entry<String, MultipartFile> entry : photos.entrySet()) {
+                    String key = entry.getKey();
+                    if (key.startsWith("variant_photo_")) {
+                        try {
+                            int variantIndex = Integer.parseInt(key.substring("variant_photo_".length()));
+                            if (variantIndex >= 0 && variantIndex < itemDto.getVariants().size()) {
+                                String photoPath = savePhoto(entry.getValue());
+                                itemDto.getVariants().get(variantIndex).setPhotoPath(photoPath);
+                            }
+                        } catch (NumberFormatException e) {
+                            logger.warn("Received photo with malformed key in createItem: {}", key);
+                        }
+                    }
                 }
-                for (int i = 0; i < itemDto.getVariants().size(); i++) {
-                    String photoPath = savePhoto(photos[i]);
-                    itemDto.getVariants().get(i).setPhotoPath(photoPath);
-                }
-            } // else: No photos provided, do not set photoPath, allow blank
+            }
 
             ItemDto created = itemService.createItem(itemDto);
             logger.info("Created catalog item with name={}", itemDto.getName());
@@ -78,22 +86,42 @@ public class ItemController {
             throw new ApplicationException("Failed to create catalog item", e);
         }
     }
+
     private String savePhoto(MultipartFile photo) {
-        // Save to disk/cloud and return path
-        if (photo != null && !photo.isEmpty()) {
-            String fileName = photo.getOriginalFilename();
-            Path path = Paths.get("uploads/item-photos/" + fileName);
-            try {
-                Files.createDirectories(path.getParent());
-                Files.write(path, photo.getBytes());
-                logger.info("Saved photo {} to {}", fileName, path);
-                return path.toString();
-            } catch (IOException e) {
-                logger.error("Error saving photo {}: {}", fileName, e.getMessage(), e);
-                throw new ApplicationException("Failed to save photo", e);
-            }
+        if (photo == null || photo.isEmpty()) {
+            return null;
         }
-        return null;
+
+        // HARDENED LOGIC:
+        // 1. Sanitize the original filename to prevent path traversal attacks.
+        String originalFileName = StringUtils.cleanPath(photo.getOriginalFilename());
+        if (originalFileName.contains("..")) {
+            throw new ApplicationException("Invalid file name: " + originalFileName);
+        }
+
+        // 2. Generate a unique filename to prevent overwrites.
+        String fileExtension = "";
+        int lastDot = originalFileName.lastIndexOf('.');
+        if (lastDot > 0) {
+            fileExtension = originalFileName.substring(lastDot); // e.g., ".jpg"
+        }
+        String uniqueFileName = UUID.randomUUID().toString() + fileExtension;
+
+        // It's better to configure this path in application.properties
+        Path uploadDir = Paths.get("uploads/item-photos/");
+        Path destinationPath = uploadDir.resolve(uniqueFileName);
+
+        try {
+            Files.createDirectories(uploadDir);
+            Files.write(destinationPath, photo.getBytes());
+            logger.info("Saved photo {} to {}", uniqueFileName, destinationPath);
+
+            // Return a path that can be used by the web server, not the full system path
+            return "/media/item-photos/" + uniqueFileName; // Example web-accessible path
+        } catch (IOException e) {
+            logger.error("Error saving photo {}: {}", uniqueFileName, e.getMessage(), e);
+            throw new ApplicationException("Failed to save photo", e);
+        }
     }
     @PostMapping("/bulk")
     @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
@@ -107,11 +135,39 @@ public class ItemController {
             throw new ApplicationException("Failed to bulk create catalog items", e);
         }
     }
-
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = { "multipart/form-data" })
     @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
-    public ResponseEntity<ItemDto> updateItem(@PathVariable Long id, @Valid @RequestBody ItemDto itemDto) {
+    public ResponseEntity<ItemDto> updateItem(
+            @PathVariable Long id,
+            @Valid @RequestPart("itemDto") ItemDto itemDto,
+            @RequestParam(required = false) Map<String, MultipartFile> photos) {
         try {
+            if (photos != null && !photos.isEmpty()) {
+                for (Map.Entry<String, MultipartFile> entry : photos.entrySet()) {
+                    String key = entry.getKey(); // e.g., "variant_photo_0"
+                    MultipartFile file = entry.getValue();
+
+                    // Check if the key matches the expected pattern
+                    if (key.startsWith("variant_photo_")) {
+                        try {
+                            // Extract the index from the key
+                            int variantIndex = Integer.parseInt(key.substring("variant_photo_".length()));
+
+                            // Ensure the index is valid for the variants list
+                            if (variantIndex >= 0 && variantIndex < itemDto.getVariants().size()) {
+                                String photoPath = savePhoto(file); // Your existing savePhoto method
+                                // Directly set the path on the correct variant
+                                itemDto.getVariants().get(variantIndex).setPhotoPath(photoPath);
+                            } else {
+                                logger.warn("Received photo with out-of-bounds index: {}", key);
+                            }
+                        } catch (NumberFormatException e) {
+                            logger.warn("Received photo with malformed key: {}", key);
+                        }
+                    }
+                }
+            }
+
             ItemDto updated = itemService.updateItem(id, itemDto);
             logger.info("Updated catalog item id={}", id);
             return ResponseEntity.ok(updated);
@@ -120,17 +176,16 @@ public class ItemController {
             throw new ApplicationException("Failed to update catalog item", e);
         }
     }
-
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
-    public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteItemVariant(@PathVariable Long id) {
         try {
-            itemService.deleteItem(id);
-            logger.info("Deleted catalog item id={}", id);
+            itemService.deleteItemVariant(id);
+            logger.info("Deleted catalog item variants id={}", id);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            logger.error("Error deleting catalog item id={}: {}", id, e.getMessage(), e);
-            throw new ApplicationException("Failed to delete catalog item", e);
+            logger.error("Error deleting catalog item variant id={}: {}", id, e.getMessage(), e);
+            throw new ApplicationException("Failed to delete catalog item variant", e);
         }
     }
 }

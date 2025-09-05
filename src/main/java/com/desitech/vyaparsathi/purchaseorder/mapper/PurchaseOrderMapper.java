@@ -14,10 +14,12 @@ public interface PurchaseOrderMapper {
     PurchaseOrderDto toDto(PurchaseOrder purchaseOrder);
     @Mapping(source = "itemVariant.id", target = "itemVariantId")
     @Mapping(source = "itemVariant.sku", target = "sku")
+    @Mapping(source = "itemVariant.item.name", target = "name")
     PurchaseOrderItemDto toDto(PurchaseOrderItem purchaseOrderItem);
     @Mapping(target = "supplier", ignore = true)
     PurchaseOrder toEntity(PurchaseOrderDto dto);
     @Mapping(target = "itemVariant", ignore = true)
+    @Mapping(target = "purchaseOrder", ignore = true)
     PurchaseOrderItem toEntity(PurchaseOrderItemDto dto);
     List<PurchaseOrderDto> toDtoList(List<PurchaseOrder> purchaseOrders);
 }

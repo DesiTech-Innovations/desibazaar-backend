@@ -1,6 +1,7 @@
 package com.desitech.vyaparsathi.purchaseorder.dto;
 
 import com.desitech.vyaparsathi.common.util.CustomLocalDateTimeDeserializer;
+import com.desitech.vyaparsathi.purchaseorder.enums.PurchaseOrderStatus;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -9,7 +10,7 @@ import java.util.List;
 
 @Data
 public class PurchaseOrderDto {
-    private Integer id;
+    private Long id;
     private String poNumber;
     private Long supplierId;
     @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
@@ -17,7 +18,7 @@ public class PurchaseOrderDto {
     @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     private LocalDateTime expectedDeliveryDate;
     private BigDecimal totalAmount;
-    private String status;
+    private PurchaseOrderStatus status;
     private String notes;
     private List<PurchaseOrderItemDto> items;
 }

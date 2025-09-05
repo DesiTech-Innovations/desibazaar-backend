@@ -23,8 +23,15 @@ public class ReceivingItem {
     @Enumerated(EnumType.STRING)
     private ReceivingItemStatus status;
 
+    @Column(nullable = false)
+    private Integer expectedQty;
+
+    @Column(name = "received_qty", nullable = false)
     private Integer receivedQty;
     private Integer damagedQty;
     private String damageReason;
     private String notes;
+
+    @Column(name = "put_away_status")
+    private String putAwayStatus; // e.g., "Accepted", "Rejected - Fabric Issue", "Rejected - Stitching Issue"
 }

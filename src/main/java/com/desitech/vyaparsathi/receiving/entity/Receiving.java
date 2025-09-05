@@ -2,6 +2,7 @@ package com.desitech.vyaparsathi.receiving.entity;
 
 import com.desitech.vyaparsathi.purchaseorder.entity.PurchaseOrder;
 import com.desitech.vyaparsathi.receiving.enums.ReceivingStatus;
+import com.desitech.vyaparsathi.shop.entity.Shop;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -27,4 +28,12 @@ public class Receiving {
 
     @OneToMany(mappedBy = "receiving", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReceivingItem> items;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shop_id", nullable = false)
+    private Shop shop;
+
+    //Optional
+/*    @Column(name = "supplier_id")
+    private Long supplierId;*/
 }

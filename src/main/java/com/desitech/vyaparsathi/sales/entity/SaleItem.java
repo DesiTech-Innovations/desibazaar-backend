@@ -31,9 +31,6 @@ public class SaleItem {
     @Column(nullable = false)
     private BigDecimal unitPrice;
 
-    @Column(name = "cost_per_unit", nullable = false)
-    private BigDecimal costPerUnit = BigDecimal.ZERO;
-
     @Column(nullable = false)
     private BigDecimal taxableValue;
 

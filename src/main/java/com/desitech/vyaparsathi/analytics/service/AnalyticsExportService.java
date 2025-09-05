@@ -25,15 +25,11 @@ public class AnalyticsExportService {
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsExportService.class);
     public byte[] exportItemDemand(List<ItemDemandPredictionDto> data, String format) {
         AnalyticsExportFormat fmt = AnalyticsExportFormat.fromString(format);
-        switch (fmt) {
-            case EXCEL:
-                return exportToExcel(data);
-            case PDF:
-                return exportToPdf(data);
-            case CSV:
-            default:
-                return exportToCsv(data);
-        }
+        return switch (fmt) {
+            case EXCEL -> exportToExcel(data);
+            case PDF -> exportToPdf(data);
+            default -> exportToCsv(data);
+        };
     }
 
     private byte[] exportToCsv(List<ItemDemandPredictionDto> data) {

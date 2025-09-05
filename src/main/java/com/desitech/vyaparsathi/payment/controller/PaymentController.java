@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -69,7 +70,9 @@ public class PaymentController {
                                 paymentDto.getPaymentMethod(),
                                 paymentDto.getStatus(),
                                 paymentDto.getPaymentDate(),
-                                paymentDto.getTransactionId()
+                                paymentDto.getTransactionId(),
+                                paymentDto.getReference(),
+                                paymentDto.getNotes()
                         );
                         logger.info("Recorded payment for sourceId={}, amount={}", request.getSourceId(), request.getAmount());
                         return ResponseEntity.ok(
@@ -82,6 +85,34 @@ public class PaymentController {
                 } catch (Exception e) {
                         logger.error("Error recording payment for sourceId={}, amount={}: {}", request.getSourceId(), request.getAmount(), e.getMessage(), e);
                         throw new ApplicationException("Failed to record payment", e);
+                }
+        }
+
+        @PostMapping("/record-batch")
+        @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+        public ResponseEntity<ApiResponse<List<PaymentResponse>>> recordPaymentsBatch(
+                @Valid @RequestBody List<PaymentReceivedRequest> requests) {
+                List<PaymentResponse> responses = new ArrayList<>();
+                try {
+                        for (PaymentReceivedRequest request : requests) {
+                                PaymentDto paymentDto = paymentService.recordDuePayment(request);
+                                PaymentResponse response = new PaymentResponse(
+                                        paymentDto.getId(),
+                                        paymentDto.getAmount(),
+                                        paymentDto.getPaymentMethod(),
+                                        paymentDto.getStatus(),
+                                        paymentDto.getPaymentDate(),
+                                        paymentDto.getTransactionId(),
+                                        paymentDto.getReference(),
+                                        paymentDto.getNotes()
+                                );
+                                responses.add(response);
+                        }
+                        logger.info("Batch payment recorded: count={}", requests.size());
+                        return ResponseEntity.ok(new ApiResponse<>("Payments recorded successfully", responses, null));
+                } catch (Exception e) {
+                        logger.error("Error recording batch payments: {}", e.getMessage(), e);
+                        throw new ApplicationException("Failed to record batch payments", e);
                 }
         }
 }

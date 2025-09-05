@@ -2,29 +2,25 @@ package com.desitech.vyaparsathi.inventory.mapper;
 
 import com.desitech.vyaparsathi.inventory.dto.ItemDto;
 import com.desitech.vyaparsathi.inventory.dto.ItemVariantDto;
+import com.desitech.vyaparsathi.inventory.entity.Category;
 import com.desitech.vyaparsathi.inventory.entity.Item;
 import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
+import com.desitech.vyaparsathi.inventory.repository.CategoryRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.stream.Collectors;
 
-/**
- * The CatalogMapper class is responsible for converting between entity objects
- * (Item, ItemVariant) and their corresponding DTOs (ItemDto, ItemVariantDto).
- * This class ensures that data is properly formatted for API communication
- * while keeping the business logic and database entities clean.
- */
 @Component
 public class ItemMapper {
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     /**
      * Converts an Item entity to an ItemDto.
-     * This method also maps the list of ItemVariants within the Item entity
-     * to a list of ItemVariantDto in the DTO.
-     *
-     * @param item The Item entity to convert.
-     * @return The resulting ItemDto.
      */
     public ItemDto toDto(Item item) {
         if (item == null) {
@@ -35,10 +31,17 @@ public class ItemMapper {
         dto.setId(item.getId());
         dto.setName(item.getName());
         dto.setDescription(item.getDescription());
-        dto.setCategory(item.getCategory());
         dto.setBrandName(item.getBrandName());
+        // Map new attributes
+        dto.setFabric(item.getFabric());
+        dto.setSeason(item.getSeason());
 
-        // Map the list of variants if it exists
+        // Map the category relationship
+        if (item.getCategory() != null) {
+            dto.setCategoryId(item.getCategory().getId());
+            dto.setCategoryName(item.getCategory().getName());
+        }
+
         if (item.getVariants() != null) {
             dto.setVariants(item.getVariants().stream()
                     .map(this::toDto)
@@ -50,11 +53,6 @@ public class ItemMapper {
 
     /**
      * Converts an ItemDto to an Item entity.
-     * This method also maps the list of ItemVariantDto within the DTO
-     * to a list of ItemVariant entities.
-     *
-     * @param dto The ItemDto to convert.
-     * @return The resulting Item entity.
      */
     public Item toEntity(ItemDto dto) {
         if (dto == null) {
@@ -65,15 +63,22 @@ public class ItemMapper {
         item.setId(dto.getId());
         item.setName(dto.getName());
         item.setDescription(dto.getDescription());
-        item.setCategory(dto.getCategory());
         item.setBrandName(dto.getBrandName());
+        // Map new attributes
+        item.setFabric(dto.getFabric());
+        item.setSeason(dto.getSeason());
 
-        // Map the list of variant DTOs if it exists
+        // Map the category relationship using the repository
+        if (dto.getCategoryId() != null) {
+            Category category = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + dto.getCategoryId()));
+            item.setCategory(category);
+        }
+
         if (dto.getVariants() != null) {
             item.setVariants(dto.getVariants().stream()
                     .map(variantDto -> {
                         ItemVariant variant = toEntity(variantDto);
-                        // Important: Link the variant back to its parent item
                         variant.setItem(item);
                         return variant;
                     })
@@ -84,10 +89,8 @@ public class ItemMapper {
     }
 
     /**
-     * Converts a single ItemVariant entity to an ItemVariantDto.
-     *
-     * @param itemVariant The ItemVariant entity to convert.
-     * @return The resulting ItemVariantDto.
+     * Converts a single ItemVariant entity to a flattened ItemVariantDto.
+     * This DTO is rich with parent item info, useful for lists and sales pages.
      */
     public ItemVariantDto toDto(ItemVariant itemVariant) {
         if (itemVariant == null) {
@@ -105,42 +108,53 @@ public class ItemMapper {
         dto.setColor(itemVariant.getColor());
         dto.setSize(itemVariant.getSize());
         dto.setDesign(itemVariant.getDesign());
+        dto.setFit(itemVariant.getFit()); // Map new 'fit' attribute
         dto.setLowStockThreshold(itemVariant.getLowStockThreshold());
+
         if (itemVariant.getItem() != null) {
-            dto.setCategory(itemVariant.getItem().getCategory());
-            dto.setItemName(itemVariant.getItem().getName());
-            dto.setBrand(itemVariant.getItem().getBrandName());
-            dto.setItemId(itemVariant.getItem().getId());
-            dto.setDescription(itemVariant.getItem().getDescription());
+            Item parentItem = itemVariant.getItem();
+            dto.setItemName(parentItem.getName());
+            dto.setBrand(parentItem.getBrandName());
+            dto.setItemId(parentItem.getId());
+            dto.setDescription(parentItem.getDescription());
+            // Map new parent attributes
+            dto.setFabric(parentItem.getFabric());
+            dto.setSeason(parentItem.getSeason());
+
+            // Map parent category relationship
+            if (parentItem.getCategory() != null) {
+                dto.setCategoryId(parentItem.getCategory().getId());
+                dto.setCategoryName(parentItem.getCategory().getName());
+            }
         }
+
+        // This should be populated by a separate stock service/query
         dto.setCurrentStock(BigDecimal.ZERO);
         return dto;
     }
 
     /**
      * Converts a single ItemVariantDto to an ItemVariant entity.
-     *
-     * @param dto The ItemVariantDto to convert.
-     * @return The resulting ItemVariant entity.
      */
     public ItemVariant toEntity(ItemVariantDto dto) {
         if (dto == null) {
             return null;
         }
 
-    ItemVariant itemVariant = new ItemVariant();
-    itemVariant.setId(dto.getId());
-    itemVariant.setSku(dto.getSku());
-    itemVariant.setUnit(dto.getUnit());
-    itemVariant.setPricePerUnit(dto.getPricePerUnit());
-    itemVariant.setHsn(dto.getHsn());
-    itemVariant.setGstRate(dto.getGstRate());
-    itemVariant.setPhotoPath(dto.getPhotoPath());
-    itemVariant.setColor(dto.getColor());
-    itemVariant.setSize(dto.getSize());
-    itemVariant.setDesign(dto.getDesign());
-    itemVariant.setLowStockThreshold(dto.getLowStockThreshold());
+        ItemVariant itemVariant = new ItemVariant();
+        itemVariant.setId(dto.getId());
+        itemVariant.setSku(dto.getSku());
+        itemVariant.setUnit(dto.getUnit());
+        itemVariant.setPricePerUnit(dto.getPricePerUnit());
+        itemVariant.setHsn(dto.getHsn());
+        itemVariant.setGstRate(dto.getGstRate());
+        itemVariant.setPhotoPath(dto.getPhotoPath());
+        itemVariant.setColor(dto.getColor());
+        itemVariant.setSize(dto.getSize());
+        itemVariant.setDesign(dto.getDesign());
+        itemVariant.setFit(dto.getFit()); // Map new 'fit' attribute
+        itemVariant.setLowStockThreshold(dto.getLowStockThreshold());
 
-    return itemVariant;
+        return itemVariant;
     }
 }

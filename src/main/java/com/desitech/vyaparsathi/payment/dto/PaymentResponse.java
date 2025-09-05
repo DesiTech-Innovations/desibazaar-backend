@@ -19,4 +19,6 @@ public class PaymentResponse {
     private PaymentStatus status;
     private LocalDateTime paymentDate;
     private String transactionId;
+    private String reference;
+    private String notes;
 }

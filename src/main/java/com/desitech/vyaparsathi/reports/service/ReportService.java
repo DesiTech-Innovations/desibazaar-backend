@@ -1,5 +1,7 @@
 package com.desitech.vyaparsathi.reports.service;
 
+import com.desitech.vyaparsathi.inventory.entity.Category;
+import com.desitech.vyaparsathi.payment.dto.PaymentDto;
 import com.desitech.vyaparsathi.payment.entity.Payment;
 import com.desitech.vyaparsathi.payment.enums.PaymentSourceType;
 import com.desitech.vyaparsathi.payment.service.PaymentService;
@@ -34,7 +36,7 @@ public class ReportService {
 
     @Autowired
     private PaymentService paymentService; // For payment data
-    
+
     @Autowired
     private COGSCalculationService cogsCalculationService;
 
@@ -62,21 +64,21 @@ public class ReportService {
 
         BigDecimal totalSales = sales.stream()
                 .map(Sale::getTotalAmount)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Only include operational expenses (inventory purchases should not be here)
         BigDecimal totalOperationalExpenses = expenses.stream()
                 .map(Expense::getAmount)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    BigDecimal totalPaid = sales.stream()
-        .filter(sale -> sale.getId() != null)
-        .map(sale -> paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId()).stream()
-            .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add))
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalPaid = sales.stream()
+                .filter(sale -> sale.getId() != null)
+                .map(sale -> paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId()).stream()
+                        .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Calculate COGS for sold items
         BigDecimal totalCOGS = cogsCalculationService.calculateCOGS(sales);
@@ -88,16 +90,16 @@ public class ReportService {
         dto.setTotalExpenses(totalOperationalExpenses);
         dto.setTotalPaid(totalPaid);
         dto.setTotalCOGS(totalCOGS);
-        
+
         // Net Revenue = Total Sales (no returns/discounts deduction in current system)
         dto.setNetRevenue(totalSales);
-        
+
         // Outstanding Receivables = Total Sales - Total Paid
         dto.setOutstandingReceivable(totalSales.subtract(totalPaid));
-        
+
         // Net Profit = Total Sales - COGS - Operational Expenses
         dto.setNetProfit(totalSales.subtract(totalCOGS).subtract(totalOperationalExpenses));
-        
+
         return dto;
     }
 
@@ -137,12 +139,12 @@ public class ReportService {
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    BigDecimal totalPaid = sales.stream()
-        .filter(sale -> sale.getId() != null)
-        .map(sale -> paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId()).stream()
-            .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add))
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalPaid = sales.stream()
+                .filter(sale -> sale.getId() != null)
+                .map(sale -> paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId()).stream()
+                        .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Calculate COGS for the period
         BigDecimal totalCOGS = cogsCalculationService.calculateCOGSForPeriod(sales, from, to);
@@ -157,16 +159,16 @@ public class ReportService {
         dto.setTotalRoundOff(totalRoundOff);
         dto.setTotalPaid(totalPaid);
         dto.setTotalCOGS(totalCOGS);
-        
+
         // Net Revenue = Total Sales (no returns/discounts in current system)
         dto.setNetRevenue(totalSales);
-        
+
         // Outstanding Receivables = Total Sales - Total Paid
         dto.setOutstandingReceivable(totalSales.subtract(totalPaid));
-        
+
         // Net Profit = Total Sales - COGS - Operational Expenses
         dto.setNetProfit(totalSales.subtract(totalCOGS).subtract(totalOperationalExpenses));
-        
+
         return dto;
     }
 
@@ -255,15 +257,15 @@ public class ReportService {
         Map<String, CategorySalesDto> categoryMap = new HashMap<>();
         for (Sale sale : sales) {
             for (SaleItem item : sale.getSaleItems()) {
-                String category = item.getItemVariant().getItem().getCategory();
-                CategorySalesDto dto = categoryMap.getOrDefault(category, new CategorySalesDto(
-                        category,
+                Category category = item.getItemVariant().getItem().getCategory();
+                CategorySalesDto dto = categoryMap.getOrDefault(category.getName(), new CategorySalesDto(
+                        category.getName(),
                         0,
                         BigDecimal.ZERO
                 ));
                 dto.setTotalSold(dto.getTotalSold() + item.getQty().intValue());
                 dto.setTotalSales(dto.getTotalSales().add(item.getUnitPrice().multiply(item.getQty())));
-                categoryMap.put(category, dto);
+                categoryMap.put(category.getName(), dto);
             }
         }
         return new ArrayList<>(categoryMap.values());
@@ -283,9 +285,11 @@ public class ReportService {
             ));
             dto.setTotalSales(dto.getTotalSales().add(sale.getTotalAmount()));
             // Outstanding = total - paid
-        BigDecimal paid = sale.getPayments() != null ? sale.getPayments().stream()
-            .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
-            .reduce(BigDecimal.ZERO, BigDecimal::add) : BigDecimal.ZERO;
+
+            BigDecimal paid = paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId()).stream()
+                    .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
             dto.setTotalDue(dto.getTotalDue().add(sale.getTotalAmount().subtract(paid)));
             customerMap.put(customerId, dto);
         }
@@ -312,15 +316,15 @@ public class ReportService {
         List<Sale> sales = getSalesByDateRange(fromDate, toDate);
         BigDecimal totalPayments = BigDecimal.ZERO;
         int paymentCount = 0;
+
         for (Sale sale : sales) {
-            if (sale.getPayments() != null) {
-                for (var payment : sale.getPayments()) {
-                    if (payment.getAmount() != null) {
-                        totalPayments = totalPayments.add(payment.getAmount());
-                        paymentCount++;
-                    }
-                }
-            }
+            List<PaymentDto> payments = paymentService.getPaymentsBySource(PaymentSourceType.SALE, sale.getId());
+            totalPayments = totalPayments.add(
+                    payments.stream()
+                            .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            );
+            paymentCount += payments.size();
         }
         return new PaymentsSummaryDto(totalPayments, paymentCount);
     }

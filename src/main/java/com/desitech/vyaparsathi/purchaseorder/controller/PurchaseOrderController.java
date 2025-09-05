@@ -44,17 +44,15 @@ public class PurchaseOrderController {
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        // Implement delete logic in service if needed
-        // purchaseOrderService.deletePurchaseOrder(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<PurchaseOrderDto> submit(@PathVariable Long id) {
+        return ResponseEntity.ok(purchaseOrderService.submitPurchaseOrder(id));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
-    @PostMapping("/{id}/receive")
-    public ResponseEntity<Void> receive(@PathVariable Long id) {
-        purchaseOrderService.receivePurchaseOrder(id);
-        return ResponseEntity.ok().build();
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        purchaseOrderService.deletePurchaseOrder(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -34,12 +34,12 @@ public class StockController {
     private StockService service;
 
     @PostMapping("/add")
-    @Operation(summary = "Add stock manually", 
-               description = "Manually add stock with cost tracking. Records stock movement for audit trail.")
+    @Operation(summary = "Add stock manually",
+            description = "Manually add stock with cost tracking. Records a new stock movement.")
     @ApiResponse(responseCode = "200", description = "Stock added successfully")
-    public ResponseEntity<StockEntryDto> addStock(@RequestBody StockAddDto dto) {
+    public ResponseEntity<StockMovementDto> addStock(@RequestBody StockAddDto dto) { // Return StockMovementDto
         try {
-            StockEntryDto result = service.addStockFromDto(dto);
+            StockMovementDto result = service.addStockFromDto(dto);
             logger.info("Added stock for itemVariantId={}", dto.getItemVariantId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -47,7 +47,6 @@ public class StockController {
             throw new ApplicationException("Failed to add stock", e);
         }
     }
-
     @GetMapping
     @Operation(summary = "Get current stock levels", 
                description = "Retrieve current stock levels for all item variants")
@@ -112,12 +111,12 @@ public class StockController {
     }
 
     @PostMapping("/adjust")
-    @Operation(summary = "Manual stock adjustment", 
-               description = "Perform manual stock adjustment (positive to add, negative to reduce). Reason is mandatory for audit purposes.")
+    @Operation(summary = "Manual stock adjustment",
+            description = "Perform manual stock adjustment. Records a new stock movement.")
     @ApiResponse(responseCode = "200", description = "Stock adjusted successfully")
-    public ResponseEntity<StockEntryDto> adjustStock(@RequestBody StockAdjustmentDto dto) {
+    public ResponseEntity<StockMovementDto> adjustStock(@RequestBody StockAdjustmentDto dto) { // Return StockMovementDto
         try {
-            StockEntryDto result = service.adjustStock(dto);
+            StockMovementDto result = service.adjustStock(dto);
             logger.info("Adjusted stock for itemVariantId={}", dto.getItemVariantId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {

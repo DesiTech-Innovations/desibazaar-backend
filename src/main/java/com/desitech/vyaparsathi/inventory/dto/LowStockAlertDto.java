@@ -13,4 +13,9 @@ public class LowStockAlertDto {
     private BigDecimal threshold;
     private String unit;
     private String alertLevel; // LOW, CRITICAL
+
+    private Long supplierId;
+    private String supplierName;
+    private BigDecimal lastPurchasePrice;
+    private BigDecimal quantityOnOrder;
 }

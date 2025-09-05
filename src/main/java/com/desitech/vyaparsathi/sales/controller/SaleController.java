@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import com.desitech.vyaparsathi.sales.dto.SaleDto;
 import com.desitech.vyaparsathi.sales.dto.SaleDueDto;
 import com.desitech.vyaparsathi.sales.dto.SaleReturnDto;
-import com.desitech.vyaparsathi.sales.dto.SalesProfitDto;
 import com.desitech.vyaparsathi.sales.service.SaleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -156,22 +155,4 @@ public class SaleController {
             throw new ApplicationException("Failed to cancel sale", e);
         }
     }
-
-    @GetMapping("/profit-report")
-    @Operation(summary = "Get sales profit report", 
-               description = "Generate profit analysis report showing revenue, COGS, gross profit and margin percentage for sales within date range")
-    @ApiResponse(responseCode = "200", description = "Profit report generated successfully")
-    public ResponseEntity<List<SalesProfitDto>> getSalesProfitReport(
-            @Parameter(description = "Start date for profit report") @RequestParam LocalDateTime startDate,
-            @Parameter(description = "End date for profit report") @RequestParam LocalDateTime endDate) {
-        try {
-            var result = service.getSalesProfitReport(startDate, endDate);
-            logger.info("Fetched sales profit report from {} to {}", startDate, endDate);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            logger.error("Error fetching sales profit report from {} to {}: {}", startDate, endDate, e.getMessage(), e);
-            throw new ApplicationException("Failed to fetch sales profit report", e);
-        }
-    }
-
 }

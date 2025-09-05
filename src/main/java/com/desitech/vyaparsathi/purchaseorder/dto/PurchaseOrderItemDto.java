@@ -10,4 +10,5 @@ public class PurchaseOrderItemDto {
     private Integer quantity;
     private BigDecimal unitCost;
     private String sku;
+    private String name;
 }

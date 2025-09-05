@@ -23,11 +23,18 @@ public class Item {
     @Column
     private String description;
 
-    @Column
-    private String category;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     @Column(name = "brand_name")
     private String brandName;
+
+    @Column
+    private String fabric;
+
+    @Column
+    private String season;
 
     @Convert(converter = LocalDateTimeAttributeConverter.class)
     @Column(name = "created_at")

@@ -2,9 +2,11 @@ package com.desitech.vyaparsathi.inventory.service;
 
 import com.desitech.vyaparsathi.inventory.dto.ItemDto;
 import com.desitech.vyaparsathi.inventory.dto.ItemVariantDto;
+import com.desitech.vyaparsathi.inventory.entity.Category;
 import com.desitech.vyaparsathi.inventory.entity.Item;
 import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
 import com.desitech.vyaparsathi.inventory.mapper.ItemMapper;
+import com.desitech.vyaparsathi.inventory.repository.CategoryRepository;
 import com.desitech.vyaparsathi.inventory.repository.ItemRepository;
 import com.desitech.vyaparsathi.inventory.repository.ItemVariantRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -24,6 +26,9 @@ public class ItemService {
 
     @Autowired
     private ItemVariantRepository itemVariantRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     @Autowired
     private ItemMapper mapper;
@@ -80,8 +85,19 @@ public class ItemService {
 
         existingItem.setName(itemDto.getName());
         existingItem.setDescription(itemDto.getDescription());
-        existingItem.setCategory(itemDto.getCategory());
         existingItem.setBrandName(itemDto.getBrandName());
+        existingItem.setFabric(itemDto.getFabric());
+        existingItem.setSeason(itemDto.getSeason());
+        if (itemDto.getCategoryId() != null) {
+            // Check if the category has changed
+            if (existingItem.getCategory() == null || !existingItem.getCategory().getId().equals(itemDto.getCategoryId())) {
+                Category newCategory = categoryRepository.findById(itemDto.getCategoryId())
+                        .orElseThrow(() -> new EntityNotFoundException("Category not found with id: " + itemDto.getCategoryId()));
+                existingItem.setCategory(newCategory);
+            }
+        } else {
+            existingItem.setCategory(null); // Allow un-setting the category
+        }
 
         // Map of incoming variants by id (if exist)
         Map<Long, ItemVariantDto> incomingById = itemDto.getVariants().stream()
@@ -176,14 +192,10 @@ public class ItemService {
 
     // ---------- HSN & SKU Generation ------------
 
-    /**
-     * Assigns unique HSN and SKU codes to all variants in the ItemDto, if missing.
-     */
     public void assignHsnAndSkuCodes(ItemDto itemDto) {
         Set<String> usedHsns = new HashSet<>();
         Set<String> usedSkus = new HashSet<>();
         for (ItemVariantDto variant : itemDto.getVariants()) {
-            // HSN generation
             if (variant.getHsn() == null || variant.getHsn().trim().isEmpty()) {
                 String hsn;
                 do {
@@ -192,7 +204,6 @@ public class ItemService {
                 variant.setHsn(hsn);
                 usedHsns.add(hsn);
             }
-            // SKU generation
             if (variant.getSku() == null || variant.getSku().trim().isEmpty()) {
                 String sku;
                 do {
@@ -204,9 +215,6 @@ public class ItemService {
         }
     }
 
-    /**
-     * Generates a unique HSN code (example: numeric, 8 digits).
-     */
     private String generateUniqueHsn() {
         String hsn;
         do {
@@ -215,33 +223,28 @@ public class ItemService {
         return hsn;
     }
 
-    /**
-     * Generates a unique SKU using item and variant details.
-     */
     private String generateSku(ItemDto itemDto, ItemVariantDto variant) {
-        // Example: "CAT-BRAND-SIZE-COLOR-XXXX"
-        String prefix = (itemDto.getCategory() != null ? itemDto.getCategory().replaceAll("\\s+", "").toUpperCase() : "ITEM")
+        // **FIXED**: Use getCategoryName() instead of getCategory()
+        String prefix = (itemDto.getCategoryName() != null ? itemDto.getCategoryName().replaceAll("\\s+", "").toUpperCase() : "ITEM")
                 + "-"
                 + (itemDto.getBrandName() != null ? itemDto.getBrandName().replaceAll("\\s+", "").toUpperCase() : "BRAND");
         String variantPart = (variant.getSize() != null ? variant.getSize().toUpperCase() : "")
-                + (variant.getColor() != null ? variant.getColor().toUpperCase() : "");
+                + "-"+(variant.getColor() != null ? variant.getColor().toUpperCase() : "");
         String sku = prefix + "-" + variantPart + "-" + skuCounter.getAndIncrement();
         return sku;
     }
 
-    /**
-     * Update the fields of an existing ItemVariant entity from a DTO.
-     */
     private void updateVariantFromDto(ItemVariant variant, ItemVariantDto dto) {
-    variant.setSku(dto.getSku());
-    variant.setUnit(dto.getUnit());
-    variant.setPricePerUnit(dto.getPricePerUnit());
-    variant.setHsn(dto.getHsn());
-    variant.setGstRate(dto.getGstRate());
-    variant.setPhotoPath(dto.getPhotoPath());
-    variant.setColor(dto.getColor());
-    variant.setSize(dto.getSize());
-    variant.setDesign(dto.getDesign());
-    variant.setLowStockThreshold(dto.getLowStockThreshold());
+        variant.setSku(dto.getSku());
+        variant.setUnit(dto.getUnit());
+        variant.setPricePerUnit(dto.getPricePerUnit());
+        variant.setHsn(dto.getHsn());
+        variant.setGstRate(dto.getGstRate());
+        variant.setPhotoPath(dto.getPhotoPath());
+        variant.setColor(dto.getColor());
+        variant.setSize(dto.getSize());
+        variant.setDesign(dto.getDesign());
+        variant.setFit(dto.getFit()); // **FIXED**: Added the missing 'fit' attribute
+        variant.setLowStockThreshold(dto.getLowStockThreshold());
     }
 }

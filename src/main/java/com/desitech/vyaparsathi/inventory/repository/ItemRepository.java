@@ -12,11 +12,20 @@ import java.util.Optional;
 @Repository
 public interface ItemRepository extends JpaRepository<Item, Long> {
 
-    @EntityGraph(attributePaths = {"variants"}, type = EntityGraph.EntityGraphType.LOAD)
+    @EntityGraph(attributePaths = {"variants", "category"}, type = EntityGraph.EntityGraphType.LOAD)
     @Query("SELECT i FROM Item i")
     List<Item> findAllWithVariants();
 
-    @EntityGraph(attributePaths = {"variants"}, type = EntityGraph.EntityGraphType.LOAD)
+    @EntityGraph(attributePaths = {"variants", "category"}, type = EntityGraph.EntityGraphType.LOAD)
     @Query("SELECT i FROM Item i WHERE i.id = :id")
     Optional<Item> findByIdWithVariants(Long id);
+
+    /**
+     * Checks if any item is associated with the given category ID.
+     * This is used to prevent deletion of a category that is in use.
+     * @param categoryId The ID of the category to check.
+     * @return true if an item exists with that categoryId, false otherwise.
+     */
+    boolean existsByCategoryId(Long categoryId);
+
 }

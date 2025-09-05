@@ -1,6 +1,7 @@
 package com.desitech.vyaparsathi.payment.mapper;
 
 import com.desitech.vyaparsathi.payment.dto.PaymentDto;
+import com.desitech.vyaparsathi.payment.dto.PaymentReceivedRequest;
 import com.desitech.vyaparsathi.payment.entity.Payment;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +33,7 @@ public class PaymentMapper {
         Payment payment = new Payment();
         payment.setId(dto.getId());
         payment.setSourceId(dto.getSourceId());
-        payment.setTransactionId(dto.getTransactionId());
+        payment.setTransactionId(dto.getTransactionId() == null || dto.getTransactionId().trim().isEmpty() ? null : dto.getTransactionId());
         payment.setSourceType(dto.getSourceType());
         payment.setSupplierId(dto.getSupplierId());
         payment.setCustomerId(dto.getCustomerId());
@@ -42,6 +43,22 @@ public class PaymentMapper {
         payment.setReference(dto.getReference());
         payment.setNotes(dto.getNotes());
         payment.setStatus(dto.getStatus());
+        return payment;
+    }
+
+    public Payment toEntityFromPayRequest(PaymentReceivedRequest request){
+        if (request == null) return null;
+        Payment payment = new Payment();
+        payment.setSourceId(request.getSourceId());
+        payment.setSourceType(request.getSourceType());
+        payment.setAmount(request.getAmount());
+        payment.setTransactionId(request.getTransactionId() == null || request.getTransactionId().trim().isEmpty() ? null : request.getTransactionId());
+        payment.setPaymentMethod(request.getPaymentMethod());
+        payment.setPaymentDate(java.time.LocalDateTime.now());
+        payment.setCustomerId(request.getCustomerId());
+        payment.setSupplierId(request.getSupplierId());
+        payment.setReference(request.getReference());
+        payment.setNotes(request.getNotes());
         return payment;
     }
 }

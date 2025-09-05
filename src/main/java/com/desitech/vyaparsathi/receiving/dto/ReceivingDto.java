@@ -1,7 +1,11 @@
 package com.desitech.vyaparsathi.receiving.dto;
 
+
+import com.desitech.vyaparsathi.inventory.dto.SupplierDto;
+import com.desitech.vyaparsathi.inventory.entity.Supplier;
 import com.desitech.vyaparsathi.receiving.enums.ReceivingStatus;
 import lombok.Data;
+import com.desitech.vyaparsathi.receiving.dto.ReceivingItemDto;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -13,5 +17,7 @@ public class ReceivingDto {
     private LocalDateTime receivedAt;
     private String receivedBy;
     private String notes;
-    private List<ReceivingItemDto> items;
+    private List<ReceivingItemDto> receivingItems;
+    private Long shopId;
+    private SupplierDto supplier;
 }

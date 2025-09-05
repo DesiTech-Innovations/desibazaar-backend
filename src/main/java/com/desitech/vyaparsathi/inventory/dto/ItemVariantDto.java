@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 
 @Data
 public class ItemVariantDto {
+    // Fields specific to the variant
     private Long id;
     private String sku;
     private String unit;
@@ -12,14 +13,20 @@ public class ItemVariantDto {
     private String hsn;
     private Integer gstRate;
     private String photoPath;
-    private Long itemId;
     private String color;
     private String size;
     private String design;
+    private String fit;
+    private BigDecimal lowStockThreshold; // Changed to Integer for consistency with entity
     private BigDecimal currentStock;
-    private String category;
+
+    // "Flattened" fields from the parent Item entity
+    private Long itemId;
     private String itemName;
-    private BigDecimal lowStockThreshold;
-    private String brand;
     private String description;
+    private String brand;
+    private Long categoryId; // Corrected from 'String category'
+    private String categoryName; // Added for completeness
+    private String fabric; // Added from parent
+    private String season; // Added
 }

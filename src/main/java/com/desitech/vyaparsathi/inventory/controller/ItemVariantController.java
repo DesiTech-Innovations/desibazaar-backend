@@ -8,6 +8,7 @@ import com.desitech.vyaparsathi.inventory.dto.ItemVariantDto;
 import com.desitech.vyaparsathi.inventory.entity.ItemVariant;
 import com.desitech.vyaparsathi.inventory.service.ItemVariantService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,9 +51,9 @@ public class ItemVariantController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ItemVariantDto>> list(Pageable pageable) {
+    public ResponseEntity<Page<ItemVariantDto>> list(Pageable pageable) {
         try {
-            List<ItemVariantDto> result = service.list(pageable);
+            Page<ItemVariantDto> result = service.list(pageable);
             logger.info("Listed item variants");
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -80,10 +81,13 @@ public class ItemVariantController {
             @RequestParam(required = false) String color,
             @RequestParam(required = false) String size,
             @RequestParam(required = false) String style,
-            @RequestParam(required = false) String sku
+            @RequestParam(required = false) String sku,
+            @RequestParam(required = false) String fabric,
+            @RequestParam(required = false) String season,
+            @RequestParam(required = false) String fit
     ) {
         try {
-            List<ItemVariantDto> dtos = service.searchItemVariants(name,category,color,size,style,sku);
+            List<ItemVariantDto> dtos = service.searchItemVariants(name,category,color,size,style,sku,fabric,season,fit);
             logger.info("Searched item variants with filters: name={}, category={}, color={}, size={}, style={}, sku={}", name, category, color, size, style, sku);
             return ResponseEntity.ok(dtos);
         } catch (Exception e) {

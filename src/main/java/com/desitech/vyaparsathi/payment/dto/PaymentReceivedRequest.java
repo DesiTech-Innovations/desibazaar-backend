@@ -17,4 +17,23 @@ public class PaymentReceivedRequest {
     private Long supplierId;
     private LocalDateTime paymentDate;
     private String transactionId; // Optional: for client/system idempotency
+    private String reference;
+    private String notes;
 }
+
+
+/*
+{saleId: 5, amount: 1000, method: "Cash", date: "2025-08-31"}
+amount
+:
+1000
+date
+:
+"2025-08-31"
+method
+:
+"Cash"
+saleId
+:
+5
+ */
